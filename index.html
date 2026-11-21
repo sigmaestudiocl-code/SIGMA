@@ -528,7 +528,7 @@ body.atheme{--bg:rgba(0,0,0,.35);--card:rgba(18,18,20,.9);--tx:#f0ece6;--mut:#a3
 <script>
 (function(){
 var LOCAL=/^(rem_|rst)/,C={},L={},T={},V={},dirty={},LS,db,done=false,chip,ORIG,SZ=60000;
-function status(t){try{if(!chip){chip=document.createElement('div');chip.style.cssText='position:fixed;left:8px;bottom:6px;z-index:9998;font:11px system-ui,sans-serif;opacity:.65;pointer-events:none;color:#aaa';document.body.appendChild(chip)}chip.textContent=t}catch(e){}}
+function status(t){try{if(!chip){chip=document.createElement('div');chip.style.cssText='position:fixed;left:8px;bottom:6px;z-index:9998;font:12px system-ui,sans-serif;pointer-events:none;color:#fff;background:rgba(0,0,0,.75);padding:3px 8px;border-radius:8px;max-width:90vw';document.body.appendChild(chip)}chip.textContent=t}catch(e){}}
 function run(){if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',run);return}
   var o=document.getElementById('syncov');if(o)o.remove();
   var s=document.createElement('script');s.textContent=document.getElementById('appjs').textContent;document.body.appendChild(s)}
@@ -561,11 +561,11 @@ function flush(k,ver){
 function seed(){var ks=[],i;for(i=0;i<LS.length;i++)ks.push(ORIG.key.call(LS,i));
   ks.forEach(function(k){if(k&&!LOCAL.test(k)){C[k]=ORIG.get.call(LS,k);push(k)}})}
 function live(){db.collection('kv').onSnapshot(function(s){if(ingest(s)){try{badges()}catch(e){}try{updBell()}catch(e){}}},function(){status('⚠ Sin conexión')})}
-var to=setTimeout(function(){status('Modo local (sin sincronizar)');go()},10000);
+var to=setTimeout(function(){status('Modo local: tiempo agotado '+(window.__authErr||''));go()},10000);
 try{
-  if(!window.firebase||!window.SIGMA_FB)throw 0;
+  status('Conectando…');if(!window.firebase||!window.SIGMA_FB){status('⚠ Firebase no cargó (SDK bloqueado o sin internet)');throw 0}
   firebase.initializeApp(window.SIGMA_FB);
-  Promise.all([firebase.auth().signInAnonymously().catch(function(){return null})]).then(function(r){
+  Promise.all([firebase.auth().signInAnonymously().catch(function(e){window.__authErr=e&&e.code;return null})]).then(function(r){
     db=firebase.firestore();
     return db.collection('kv').get().then(function(snap){
       if(done)return;
@@ -573,7 +573,7 @@ try{
       if(empty)seed();
       ['rst1','rst2'].forEach(function(k){ORIG.set.call(LS,k,'1')});
       live();clearTimeout(to);status('● Sincronizado');go()})
-  }).catch(function(){clearTimeout(to);status('Modo local (sin sincronizar)');go()});
+  }).catch(function(e){clearTimeout(to);status('Modo local: '+(window.__authErr||(e&&(e.code||e.message))||'sin conexión'));go()});
 }catch(e){clearTimeout(to);go()}
 })();
 </script>
