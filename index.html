@@ -162,13 +162,34 @@ var o=document.getElementById('stfov');if(o)o.remove();
 o=document.createElement('div');o.id='stfov';
 o.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:20px;font:15px system-ui,sans-serif;color:#eee';
 var S='width:100%;padding:12px;margin:6px 0;font-size:16px;border:1px solid #3a3733;border-radius:10px;background:#111;color:#eee;box-sizing:border-box',B='padding:12px 14px;border:0;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer';
-var box=document.createElement('div');box.style.cssText='width:100%;max-width:360px;background:#1b1b1d;border:1px solid #3a3733;border-radius:14px;padding:18px';
+var box=document.createElement('div');box.style.cssText='width:100%;max-width:360px;background:#1b1b1d;border:1px solid #3a3733;border-radius:14px;padding:18px;max-height:90vh;overflow:auto';
 function close(){o.remove()}
 if(staff){
- box.innerHTML='<div style="font-weight:700;font-size:17px;margin-bottom:6px">Sesión del personal</div><div style="color:#9a948b;margin-bottom:14px;word-break:break-all">'+(u.email||'')+'</div><button id="stfout" style="'+B+';background:#b3261e;color:#fff;width:100%">Cerrar sesión</button><button id="stfx" style="'+B+';background:#2a2a2d;color:#eee;width:100%;margin-top:8px">Cancelar</button>';
+ var me=(u.email||'').toLowerCase(),db2=firebase.firestore();
+ box.innerHTML='<div style="font-weight:700;font-size:17px;margin-bottom:6px">Sesión del personal</div><div id="stfme" style="color:#9a948b;margin-bottom:12px;word-break:break-all"></div><div id="stfadm"></div><button id="stfout" style="'+B+';background:#b3261e;color:#fff;width:100%">Cerrar sesión</button><button id="stfx" style="'+B+';background:#2a2a2d;color:#eee;width:100%;margin-top:8px">Cerrar ventana</button>';
  o.appendChild(box);document.body.appendChild(o);
+ document.getElementById('stfme').textContent=me;
  document.getElementById('stfout').onclick=function(){au.signOut().then(function(){location.reload()})};
- document.getElementById('stfx').onclick=close;return}
+ document.getElementById('stfx').onclick=close;
+ db2.doc('staff/'+me).get().then(function(d){
+  var inf=function(t){var e=document.getElementById('stfadm');if(e)e.innerHTML='<div style="font-size:13px;color:#e5b84b;margin:0 0 12px"></div>',e.firstChild.textContent=t};if(!d.exists){inf('Tu correo ('+me+') no está en la colección staff de Firestore, o está escrito distinto.');return}if((d.data()||{}).rol!=='admin'){inf('Tu rol es «'+((d.data()||{}).rol||'vacío')+'». Debe ser exactamente: admin');return}
+  var A=document.getElementById('stfadm');
+  A.innerHTML='<div style="font-weight:600;margin:4px 0">Personal autorizado</div><div id="stflist" style="font-size:14px;margin-bottom:12px"></div><div style="font-weight:600;margin:8px 0 2px">Agregar usuario</div><input id="nem" type="email" placeholder="Correo" style="'+S+'"><input id="npw" type="text" placeholder="Contraseña temporal (mín. 6)" style="'+S+'"><select id="nrol" style="'+S+'"><option value="tatuador">Tatuador</option><option value="admin">Administrador</option></select><div id="nmsg" style="min-height:20px;font-size:13px;margin:4px 0"></div><button id="ngo" style="'+B+';background:#2e7d32;color:#fff;width:100%;margin-bottom:12px">Crear usuario</button>';
+  var nm=function(t,ok){var m=document.getElementById('nmsg');m.style.color=ok?'#6fcf74':'#e5534b';m.textContent=t};
+  function load(){db2.collection('staff').get().then(function(s){var L=document.getElementById('stflist');if(!L)return;L.innerHTML='';s.docs.forEach(function(x){var r=document.createElement('div');r.style.cssText='display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #2a2a2d';var t=document.createElement('span');t.style.wordBreak='break-all';t.textContent=x.id+' · '+((x.data()||{}).rol||'');r.appendChild(t);if(x.id!==me){var q=document.createElement('button');q.textContent='Quitar';q.style.cssText='padding:6px 10px;border:0;border-radius:8px;background:#3a2523;color:#e5534b;font-size:13px';q.onclick=function(){if(confirm('¿Quitar el acceso de '+x.id+'?'))db2.doc('staff/'+x.id).delete().then(load)};r.appendChild(q)}L.appendChild(r)})}).catch(function(){})}
+  load();
+  document.getElementById('ngo').onclick=function(){
+   var em=document.getElementById('nem').value.trim().toLowerCase(),pw=document.getElementById('npw').value,rol=document.getElementById('nrol').value;
+   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){nm('Correo no válido');return}
+   if(pw.length<6){nm('La contraseña debe tener al menos 6 caracteres');return}
+   var btn=this;btn.disabled=true;nm('Creando…',1);
+   db2.doc('staff/'+em).set({rol:rol,creado:new Date().toISOString(),por:me}).then(function(){
+    var sec;try{sec=firebase.app('sec')}catch(e){sec=firebase.initializeApp(window.SIGMA_FB,'sec')}
+    return sec.auth().createUserWithEmailAndPassword(em,pw).then(function(){return sec.auth().signOut()}).then(function(){return 'ok'}).catch(function(e){if(e&&e.code==='auth/email-already-in-use')return 'existia';return db2.doc('staff/'+em).delete().then(function(){throw e})})
+   }).then(function(r){btn.disabled=false;nm(r==='existia'?'Esa cuenta ya existía: quedó autorizada con su contraseña actual':'Usuario creado. Entrégale su correo y la contraseña temporal',1);document.getElementById('nem').value='';document.getElementById('npw').value='';load()}).catch(function(e){btn.disabled=false;var c=e&&e.code;nm(c==='auth/admin-restricted-operation'||c==='auth/operation-not-allowed'?'Firebase tiene bloqueados los registros: actívalos en Authentication → Settings → User actions':'Error: '+(c||(e&&e.message)));load()})
+  }
+ }).catch(function(e){var x=document.getElementById('stfadm');if(x){x.innerHTML='<div style="font-size:13px;color:#e5b84b;margin:0 0 12px"></div>';x.firstChild.textContent='No se pudo leer tu rol: '+((e&&(e.code||e.message))||'error')+'. Revisa las reglas de Firestore.'}});
+ return}
 box.innerHTML='<div style="font-weight:700;font-size:17px;margin-bottom:4px">Acceso del personal</div><div style="color:#9a948b;margin-bottom:10px;font-size:13px">Solo administración y tatuadores con cuenta.</div><input id="stfem" type="email" autocomplete="username" placeholder="Correo" style="'+S+'"><input id="stfpw" type="password" autocomplete="current-password" placeholder="Contraseña" style="'+S+'"><div id="stfmsg" style="min-height:20px;font-size:13px;color:#e5534b;margin:4px 0"></div><button id="stfgo" style="'+B+';background:#b3261e;color:#fff;width:100%">Entrar</button><button id="stfrs" style="'+B+';background:none;color:#9a948b;width:100%;margin-top:6px;font-weight:400">Olvidé mi contraseña</button><button id="stfx" style="'+B+';background:#2a2a2d;color:#eee;width:100%;margin-top:4px">Cancelar</button>';
 o.appendChild(box);document.body.appendChild(o);
 var msg=function(t,ok){var m=document.getElementById('stfmsg');m.style.color=ok?'#6fcf74':'#e5534b';m.textContent=t};
