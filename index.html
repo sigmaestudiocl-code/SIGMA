@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="2026-11-25.4">
+<meta name="app-build" content="2026-11-25.5">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="manifest" href="manifest-v2.json">
@@ -1174,7 +1174,7 @@ function migrar(){clientes().filter(function(c){return c.estado==='aprobado'}).f
 try{migrar()}catch(e){}
 try{var A0=getA(),c0=false;A0.forEach(function(x){if(!x.codigo){x.codigo=genCod(A0);c0=true}});if(c0)localStorage.setItem('archivo',JSON.stringify(A0))}catch(e){}
 function archRows(l){
-  return l.length?l.map(function(e){var t=e.procedimiento||{};return `<div class="tat"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(e.folio)}</b><span style="color:var(--mut);font-size:13px">${new Date(e.aprobacion.fecha).toLocaleDateString('es-CL')}</span></div><div style="font-size:14px">${esc(e.nombre)}</div><div class="hint">${esc(e.artista)} · ${esc(t.tipo||'')} · ${esc(t.zona||'')}</div><div style="display:flex;gap:16px;flex-wrap:wrap"><button type="button" class="sm" data-av="${e.aid}">Ver</button><button type="button" class="sm" data-ad="${e.aid}">Descargar</button><a class="sm" data-ae="${e.aid}" href="${esc(envLink(e))}" target="_blank" rel="noopener" style="text-decoration:none">Volver a enviar</a></div><div id="av${e.aid}"></div></div>`}).join(''):'<div class="hint">El archivo está vacío.</div>';
+  return l.length?l.map(function(e){var t=e.procedimiento||{};return `<div class="tat"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(e.folio)}</b><span style="color:var(--mut);font-size:13px">${new Date(e.aprobacion.fecha).toLocaleDateString('es-CL')}</span></div><div style="font-size:14px">${esc(e.nombre)}</div><div class="hint">${esc(e.artista)} · ${esc(t.tipo||'')} · ${esc(t.zona||'')}</div><div style="display:flex;gap:16px;flex-wrap:wrap"><button type="button" class="sm" data-av="${e.aid}">Ver</button><button type="button" class="sm" data-ad="${e.aid}">Descargar</button><button type="button" class="sm" data-cenv="${e.aid}">Volver a enviar (PDF)</button></div><div class="hint" id="cenvm${e.aid}"></div><div id="av${e.aid}"></div></div>`}).join(''):'<div class="hint">El archivo está vacío.</div>';
 }
 function recepArch(){var q=norm($('rbus').value||'');$('rl').innerHTML=archRows(getA().filter(function(e){return !q||norm(e.folio+' '+(e.codigo||'')+' '+e.nombre+' '+e.documento+' '+e.artista).indexOf(q)>-1}).reverse())}
 $('rbus').addEventListener('input',recep);
@@ -3546,6 +3546,8 @@ var _cEnv0=cEnv;cEnv=function(e){
     try{var s=JSON.parse(localStorage.getItem('drvSent')||'{}');delete s[e.folio];localStorage.setItem('drvSent',JSON.stringify(s))}catch(x){}
     var m=document.getElementById('cenvm'+e.aid);if(m)m.textContent='Enviando PDF por correo…';
     window.__drvRun();return}
+  try{var ta0=tatDe(e.artista)||{},c0=cfgE(),m0=document.getElementById('cenvm'+e.aid);
+    if(m0)m0.textContent='Envío automático no activo (revisa drive-config.js). Para: '+(e.correo||'sin correo')+' · CC: '+([ta0.correo||ta0.email||'',c0.email||''].filter(Boolean).join(', ')||'—')}catch(x){}
   _cEnv0(e)};
 var _ch9=compHTML;compHTML=function(c){var h=_ch9(c);if(!c.aid)return h;var s=c.envios&&c.envios.pdf?'✉ Último envío: '+new Date(c.envios.pdf).toLocaleString('es-CL'):'✉ PDF aún no enviado';
   return h+'<div class="tat"><b>PDF del consentimiento</b><div class="st">Se envía al cliente ('+esc(c.correo||'sin correo')+') y al tatuador, con copia al estudio.</div><div class="st" id="cenvm'+c.aid+'">'+s+'</div><button type="button" class="sm" data-cpdf="'+c.aid+'">📄 Descargar PDF</button> <button type="button" class="sm" data-cenv="'+c.aid+'">✉ Enviar PDF a cliente y tatuador</button></div>'};
