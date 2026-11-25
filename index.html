@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="2026-11-25.2">
+<meta name="app-build" content="2026-11-25.3">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="manifest" href="manifest-v2.json">
@@ -173,11 +173,12 @@ var box=document.createElement('div');box.style.cssText='width:100%;max-width:36
 function close(){o.remove()}
 if(staff){
  var me=(u.email||'').toLowerCase(),db2=firebase.firestore();
- box.innerHTML='<div style="font-weight:700;font-size:17px;margin-bottom:6px">Sesión del personal</div><div id="stfme" style="color:#9a948b;margin-bottom:12px;word-break:break-all"></div><div id="stfadm"></div><button id="stfout" style="'+B+';background:#b3261e;color:#fff;width:100%">Cerrar sesión</button><button id="stfx" style="'+B+';background:#2a2a2d;color:#eee;width:100%;margin-top:8px">Cerrar ventana</button>';
+ box.innerHTML='<div style="font-weight:700;font-size:17px;margin-bottom:6px">Sesión del personal</div><div id="stfme" style="color:#9a948b;margin-bottom:12px;word-break:break-all"></div><div id="stfadm"></div><button id="stfkiosk" style="'+B+';background:#2a2a2d;color:#eee;width:100%;margin-bottom:8px">Usar este equipo como tablet de clientes</button><button id="stfout" style="'+B+';background:#b3261e;color:#fff;width:100%">Cerrar sesión</button><button id="stfx" style="'+B+';background:#2a2a2d;color:#eee;width:100%;margin-top:8px">Cerrar ventana</button>';
  o.appendChild(box);document.body.appendChild(o);
  document.getElementById('stfme').textContent=me;
  document.getElementById('stfout').onclick=function(){au.signOut().then(function(){location.reload()})};
  document.getElementById('stfx').onclick=close;
+ document.getElementById('stfkiosk').onclick=function(){try{localStorage.setItem('rst_kiosk','1')}catch(e){}au.signOut().then(function(){location.reload()})};
  db2.doc('staff/'+me).get().then(function(d){
   var inf=function(t){var e=document.getElementById('stfadm');if(e)e.innerHTML='<div style="font-size:13px;color:#e5b84b;margin:0 0 12px"></div>',e.firstChild.textContent=t};if(!d.exists){inf('Tu correo ('+me+') no está en la colección staff de Firestore, o está escrito distinto.');return}if((d.data()||{}).rol!=='admin'){inf('Tu rol es «'+((d.data()||{}).rol||'vacío')+'». Debe ser exactamente: admin');return}
   var A=document.getElementById('stfadm');
@@ -205,7 +206,7 @@ document.getElementById('stfgo').onclick=function(){
  var em=document.getElementById('stfem').value.trim().toLowerCase(),pw=document.getElementById('stfpw').value;
  if(!em||!pw){msg('Escribe correo y contraseña');return}
  var b=this;b.disabled=true;msg('Entrando…',1);
- au.signInWithEmailAndPassword(em,pw).then(function(){location.reload()}).catch(function(e){b.disabled=false;var c=e&&e.code;msg(c==='auth/invalid-credential'||c==='auth/wrong-password'||c==='auth/user-not-found'||c==='auth/invalid-email'?'Correo o contraseña incorrectos':c==='auth/too-many-requests'?'Demasiados intentos, espera unos minutos':'Error: '+(c||(e&&e.message)))})};
+ au.signInWithEmailAndPassword(em,pw).then(function(){try{localStorage.removeItem('rst_kiosk')}catch(e){}location.reload()}).catch(function(e){b.disabled=false;var c=e&&e.code;msg(c==='auth/invalid-credential'||c==='auth/wrong-password'||c==='auth/user-not-found'||c==='auth/invalid-email'?'Correo o contraseña incorrectos':c==='auth/too-many-requests'?'Demasiados intentos, espera unos minutos':'Error: '+(c||(e&&e.message)))})};
 document.getElementById('stfrs').onclick=function(){
  var em=document.getElementById('stfem').value.trim().toLowerCase();
  if(!em){msg('Escribe tu correo arriba y vuelve a tocar');return}
@@ -213,6 +214,14 @@ document.getElementById('stfrs').onclick=function(){
 };</script>
 <script>(function(){
 var SB=window.__SB={mode:'',msg:''};
+window.__dayOf=function(iso){var d=new Date(iso);return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)};
+window.__park=function(L,k,day){
+  if(window.__SB&&window.__SB.mode==='client')return false;
+  var ch=false;
+  L.forEach(function(x){if(x&&x.consentimiento&&String(x.clave||'')===k){var d=window.__dayOf(x.consentimiento.fecha);
+    if(d!==day){x.clave=k+'~'+d.replace(/-/g,'');x.hist=(x.hist||[]).concat([{t:'Consentimiento de la sesi\u00f3n del '+d+' conservado aparte: el cliente firm\u00f3 uno nuevo para otra sesi\u00f3n',por:'Sistema',f:new Date().toISOString()}]);ch=true;
+      try{if(typeof noti==='function')noti('ADMIN','El consentimiento de '+(x.nombre||k)+' de la sesi\u00f3n del '+d+' sigue sin aprobar; el cliente firm\u00f3 uno nuevo','park:'+x.clave)}catch(e){}}}});
+  return ch};
 var SZ=60000;
 function rnd(n){var ch='abcdefghjkmnpqrstuvwxyz23456789',b=new Uint8Array(n),r='';crypto.getRandomValues(b);for(var i=0;i<n;i++)r+=ch.charAt(b[i]%ch.length);return r}
 function hoy(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)}
@@ -266,6 +275,7 @@ SB.kiosk=function(){
     waited=0;safeReload()},18e4)}
   ['pointerdown','pointermove','keydown','touchstart','input','scroll'].forEach(function(ev){document.addEventListener(ev,arm,true)});arm();
   if(typeof irInicio==='function'){var _ii=irInicio;irInicio=function(m){_ii(m);clearTimeout(kT);kT=setTimeout(function(){waited=0;safeReload()},m?10000:300)}}
+  (function(){var n=0,t0=0;document.addEventListener('pointerdown',function(e){if(e.clientX>80||e.clientY>80){n=0;return}var now=Date.now();if(now-t0>5000)n=0;t0=now;n++;if(n>=5){n=0;if(window.__staffLogin)window.__staffLogin()}},true)})();
   function wl(){try{if(navigator.wakeLock)navigator.wakeLock.request('screen').catch(function(){})}catch(e){}}
   wl();document.addEventListener('visibilitychange',function(){if(!document.hidden)wl()});
 };
@@ -319,6 +329,7 @@ function clean(r){
 function rank(x){return !x?-1:(x.estado==='firmado_cliente'?1:((x.estado||x.procedimiento)?2:0))}
 function merge(c){
   var L=jget('clientes','[]'),A=jget('archivo','[]'),ex=null,ix=-1;
+  if(c.consentimiento)window.__park(L,c.clave,window.__dayOf(c.consentimiento.fecha));
   L.forEach(function(x,i){if(x&&x.clave===c.clave){ex=x;ix=i}});
   var rn=rank(c),re=rank(ex);
   if(ex&&(re>rn||(re===rn&&rn>=1)))return false;
@@ -845,6 +856,7 @@ function fmtRut(v){var c=cleanRut(v);if(c.length<2)return c;var b=c.slice(0,-1),
 function rutOk(v){var c=cleanRut(v);if(c.length<8||c.length>9)return false;return dv(c.slice(0,-1))===c.slice(-1)}
 // Autocompletado: si el documento ya está registrado, carga todos sus datos
 function clave(c){return c.clave||cleanRut(c.documento||"")}
+function kb(c){return String(clave(c)).split("~")[0]}
 function buscar(k){try{var l=JSON.parse(localStorage.getItem("clientes")||"[]");for(var i=l.length-1;i>=0;i--)if(clave(l[i])===k)return l[i]}catch(e){}try{var A=getA();for(var j=A.length-1;j>=0;j--)if(clave(A[j])===k)return A[j]}catch(e){}return null}
 function cargar(c){
   var m={nombre:c.nombre,dir:c.direccion,fnac:esFecha(c.nacimiento),tel:c.telefono,mail:c.correo};
@@ -1148,7 +1160,7 @@ function genCod(A){var u={},ch='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',c;(A||[]).forE
 function archivar(k,now){
   try{
     var l=clientes(),c=l.filter(function(x){return clave(x)===k})[0];if(!c)return 0;
-    var e=JSON.parse(JSON.stringify(c)),a=getA(),id=+(localStorage.getItem('aidN')||0)+1;
+    var e=JSON.parse(JSON.stringify(c)),a=getA(),id=+(localStorage.getItem('aidN')||0)+1;e.clave=String(e.clave||k).split('~')[0];
     if(!/^FOLIO\d{4}-\d{4,}$/.test(e.folio||''))e.folio=folioDe(k);
     if(!e.codigo)e.codigo=genCod(a);
     e.estado='aprobado';e.aprobacion={fecha:now,por:(window.CTL?(window.CTL.perfil==='dtc'?'Director Técnico ':'')+window.CTL.nombre+(window.CTL.rut?' · RUT '+window.CTL.rut:''):'ADMIN')};e.envios={tatuador:now};e.motivo='';e.aid=id;
@@ -1418,7 +1430,7 @@ $('npanel').addEventListener('click',function(e){if(!e.target.closest('#nclr'))r
 function saldo(e){return (e.pend||0)-(e.pag||[]).reduce(function(a,p){return a+p.m},0)}
 function genRem(){
   var now=new Date(),hs=hoyF(),t1=new Date(now.getTime()+864e5),ts=isoD(t1.getFullYear(),t1.getMonth(),t1.getDate()),cl=clientes(),A=getA(),md=hs.slice(5);
-  var hasC=function(k){return cl.concat(A).some(function(c){return clave(c)===k&&c.consentimiento})};
+  var hasC=function(k){return cl.concat(A).some(function(c){return kb(c)===k&&c.consentimiento})};
   AGL().forEach(function(e){
     if(e.owner==='ADMIN')return;
     var cuando=e.fecha===hs?'hoy':'';
@@ -1878,7 +1890,7 @@ function enhAg(root){
 }
 ['aag','aagd'].forEach(function(id){new MutationObserver(function(){enhAg($(id))}).observe($(id),{childList:true,subtree:true})});
 function payState(x){
-  _caT=0;var r=x.cli?cmap()[x.cli]:null;
+  _caT=0;var r=x.cli?cAll().filter(function(c){return kb(c)===x.cli&&c.consentimiento&&fD(new Date(c.consentimiento.fecha))===x.fecha})[0]:null;
   if(!r)return 'El pago pendiente se registra cuando el cliente vinculado firma su consentimiento (día de la sesión). Vincula la cita con el cliente.';
   var cd=new Date(r.consentimiento.fecha),f=isoD(cd.getFullYear(),cd.getMonth(),cd.getDate()),n=saldo(x);
   return '✓ Consentimiento firmado el '+cd.toLocaleDateString('es-CL')+(f!==x.fecha?' (sesión: '+x.fecha+')':' · día de la sesión')+(n>0?' · puedes cobrar el saldo de '+clp(n):' · sin saldo pendiente');
@@ -1895,7 +1907,7 @@ function matchTxt(c){
 function TC(){return ld('tcob','[]')}
 function tpag(c){return (c.pagos||[]).reduce(function(a,p){return a+p.m},0)}
 function tsal(c){return (c.total||0)-tpag(c)}
-function consDia(cli,fecha){_caT=0;return !!cli&&cAll().some(function(x){return clave(x)===cli&&x.consentimiento&&fD(new Date(x.consentimiento.fecha))===fecha})}
+function consDia(cli,fecha){_caT=0;return !!cli&&cAll().some(function(x){return kb(x)===cli&&x.consentimiento&&fD(new Date(x.consentimiento.fecha))===fecha})}
 function consOk(c){var hs=hoyF(),ev=AGL().filter(function(e){return 'm'+e.id===c.id})[0];if(!ev&&c.cli)ev=AGL().filter(function(e){return e.owner===c.owner&&e.cli===c.cli&&e.fecha<=hs}).sort(function(a,b){return a.fecha<b.fecha?1:-1})[0];return consDia(c.cli,ev?ev.fecha:hs)}
 function estC(c){return AGL().some(function(e){return 'm'+e.id===c.id&&e.via==='estudio'})}
 function migPagos(){
@@ -2666,7 +2678,7 @@ $("f").addEventListener("submit",function(ev){
     artista:$("artista").value,creado:new Date().toISOString()};
   if(esMenor())c.menor=true,c.rep={nombre:$("rnom").value.trim(),documento:$("rdoc").value.trim(),parentesco:$("rpar").value,telefono:$("rtel").value.trim(),cedulaFrente:repImg.f,cedulaReverso:repImg.b,firma:repPad.data(),fecha:new Date().toISOString()};
   c.clave=ext?$("ndoc").value.replace(/[^0-9a-zA-Z]/g,"").toUpperCase():cleanRut($("rut").value);c.folio=(function(){try{var q=JSON.parse(localStorage.getItem("clientes")||"[]").filter(function(x){return clave(x)===c.clave&&!x.consentimiento&&x.folio})[0];return q?q.folio:folioNuevo()}catch(e){return folioNuevo()}})();
-  try{var l=JSON.parse(localStorage.getItem("clientes")||"[]").filter(function(x){return clave(x)!==c.clave});l.push(c);localStorage.setItem("clientes",JSON.stringify(l))}catch(e){}
+  try{var l0=JSON.parse(localStorage.getItem("clientes")||"[]");window.__park(l0,c.clave,fD(new Date()));var l=l0.filter(function(x){return clave(x)!==c.clave});l.push(c);localStorage.setItem("clientes",JSON.stringify(l))}catch(e){}
   var rows=[["Nombre",c.nombre],[ext?"Documento":"RUT",c.documento],["Nacionalidad",c.nacionalidad],["Dirección",c.direccion+", "+c.comuna+", "+c.ciudad],["Región",c.region],["Nacimiento",c.nacimiento],["Teléfono",c.telefono],["Correo",c.correo],["Artista",c.artista]].concat(c.rep?[["Representante legal",c.rep.nombre+" ("+c.rep.parentesco+") · "+c.rep.documento]]:[]);
   $("res").innerHTML='<div class="ok"><h2>✓ Cliente registrado</h2><dl>'+rows.map(function(r){return"<dt>"+r[0]+"</dt><dd>"+esc(r[1])+"</dd>"}).join("")+"</dl></div>";
   irConsent(c);
@@ -3237,7 +3249,7 @@ document.addEventListener('click',function(e){if(e.target.id!=='pan-usar')return
 (function(){var st=document.createElement('style');st.textContent='.cb{padding:7px 10px;border-radius:8px;font-weight:700;margin-top:6px;font-size:13px;line-height:1.35}.cb.ok{background:rgba(46,160,90,.15);color:var(--ok);border:1px solid var(--ok)}.cb.w{background:rgba(255,209,102,.15);color:#c98a00;border:1px solid #ffd166}.cb.bad{background:rgba(214,40,48,.14);color:#e5484d;border:1px solid #e5484d}.cb.big{font-size:14px;padding:10px 12px;margin:10px 0}';document.head.appendChild(st)})();
 function consEstado(e){
   var hs=hoyF();_caT=0;
-  if(consDia(e.cli,e.fecha)){var c=cAll().filter(function(x){return clave(x)===e.cli&&x.consentimiento&&fD(new Date(x.consentimiento.fecha))===e.fecha})[0],es=c&&c.estado;return{c:'ok',t:'✓ Consentimiento firmado'+(c&&c.aprobacion?' y aprobado':es==='pendiente_admin'?' · en revisión de administración':es==='devuelto'?' · devuelto por administración: revisar':'')}}
+  if(consDia(e.cli,e.fecha)){var c=cAll().filter(function(x){return kb(x)===e.cli&&x.consentimiento&&fD(new Date(x.consentimiento.fecha))===e.fecha})[0],es=c&&c.estado;return{c:'ok',t:'✓ Consentimiento firmado'+(c&&c.aprobacion?' y aprobado':es==='pendiente_admin'?' · en revisión de administración':es==='devuelto'?' · devuelto por administración: revisar':'')}}
   if(e.fecha>hs)return{c:'w',t:'Consentimiento pendiente: el cliente lo llena el día de la sesión'};
   return{c:'bad',t:(e.fecha<hs||(e.fecha===hs&&e.ini<=hm2n())?'🚫 FALTA GRAVE: sesión sin consentimiento del cliente recibido':'⛔ SIN CONSENTIMIENTO: no se puede tatuar')}}
 function consBadge(e){if(e.tipo==='adv'||e.tipo==='con'||e.tipo==='blq'||e.gratis===undefined&&false)return '';var o=consEstado(e);return '<div class="cb '+o.c+'">'+o.t+'</div>'}
