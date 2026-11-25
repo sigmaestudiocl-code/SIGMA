@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="2026-11-25.1">
+<meta name="app-build" content="2026-11-25.2">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="manifest" href="manifest-v2.json">
@@ -14,6 +14,11 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-v2.png">
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}</script>
 <title>SIGMA OPERACIONES</title>
+<script>/* MODO TABLET: abrir una vez con ?tablet=1 (salir con ?tablet=0) */
+(function(){try{var m=/[?&#]tablet=([01])/.exec(location.search+location.hash);
+if(m){if(m[1]==='1')localStorage.setItem('rst_kiosk','1');else localStorage.removeItem('rst_kiosk');try{history.replaceState(null,'',location.pathname)}catch(e){}}
+window.__KIOSK=localStorage.getItem('rst_kiosk')==='1'}catch(e){window.__KIOSK=false}
+if(window.__KIOSK){var st=document.createElement('style');st.textContent='[data-go="art"],[data-go="adm"]{display:none!important}html,body{overscroll-behavior:none}';document.head.appendChild(st)}})();</script>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
 --bg:#f4f1ec;--card:#fff;--tx:#1b1b1b;--mut:#6b6660;--bd:#d9d3ca;--ac:#b3261e;--ok:#2e7d32}
@@ -231,6 +236,9 @@ SB.client=function(u){
 };
 function mirror(){
   var db=SB.db,P=Storage.prototype,prev=P.setItem,dev=null,sent=jget('rst_sent','{}'),t=null,busy={};
+  function unsent(c){var m=sent[c.clave];return !m||m.h!==h32(JSON.stringify(c))}
+  SB.pending=function(){var n=Object.keys(busy).length;jget('clientes','[]').forEach(function(c){if(c&&c.clave&&unsent(c))n++});return n};
+  function purge(){try{var L=jget('clientes','[]'),lim=Date.now()-864e5,K=L.filter(function(c){return !(c&&c.clave&&!unsent(c)&&!busy[c.clave]&&(c.consentimiento||(Date.parse(c.creado)||0)<lim))});if(K.length!==L.length)localStorage.setItem('clientes',JSON.stringify(K))}catch(e){}}
   try{dev=localStorage.getItem('rst_dev');if(!dev){dev=rnd(10);prev.call(localStorage,'rst_dev',dev)}}catch(e){dev=rnd(10)}
   function run(){
     jget('clientes','[]').forEach(function(c){
@@ -240,12 +248,27 @@ function mirror(){
       var ver=(m?m.v:0)+1,base=dev+'_'+String(c.clave).replace(/[^0-9A-Za-z]/g,''),n=Math.max(1,Math.ceil(s.length/SZ)),ops=[];
       busy[c.clave]=1;
       for(var i=0;i<n;i++)ops.push(db.doc('ingresos/'+base+'_v'+ver+'__'+i).set({b:base,v:ver,i:i,n:n,d:s.slice(i*SZ,(i+1)*SZ)}));
-      Promise.all(ops).then(function(){sent[c.clave]={h:h,v:ver};prev.call(localStorage,'rst_sent',JSON.stringify(sent));delete busy[c.clave];st('✓ Datos enviados al estudio');clearTimeout(t);t=setTimeout(run,500)}).catch(function(){delete busy[c.clave];clearTimeout(t);t=setTimeout(run,20000)});
+      Promise.all(ops).then(function(){sent[c.clave]={h:h,v:ver};prev.call(localStorage,'rst_sent',JSON.stringify(sent));delete busy[c.clave];st('✓ Datos enviados al estudio');if(window.__KIOSK)setTimeout(purge,1500);clearTimeout(t);t=setTimeout(run,500)}).catch(function(){delete busy[c.clave];clearTimeout(t);t=setTimeout(run,20000)});
     });
   }
   P.setItem=function(k,v){var r=prev.apply(this,arguments);if(this===localStorage&&k==='clientes'){clearTimeout(t);t=setTimeout(run,800)}return r};
   setTimeout(run,3000);
+  if(window.__KIOSK)setTimeout(purge,5000);
 }
+SB.kiosk=function(){
+  var $=function(i){return document.getElementById(i)},boot=Date.now(),idleT=null,kT=null,waited=0;
+  try{localStorage.setItem('agenda',JSON.stringify(jget('agenda','[]').filter(function(e){return !(e&&e.__r)})))}catch(e){}
+  try{if(typeof irA==='function')irA('cli')}catch(e){}
+  function safeReload(){if(SB.pending&&SB.pending()>0&&waited<90){waited+=2;setTimeout(safeReload,2000);return}location.reload()}
+  function arm(){clearTimeout(idleT);idleT=setTimeout(function(){
+    var pristine=false;try{pristine=!$('f').classList.contains('hide')&&!$('rut').value&&!$('nombre').value}catch(e){}
+    if(pristine&&Date.now()-boot<18e5){arm();return}
+    waited=0;safeReload()},18e4)}
+  ['pointerdown','pointermove','keydown','touchstart','input','scroll'].forEach(function(ev){document.addEventListener(ev,arm,true)});arm();
+  if(typeof irInicio==='function'){var _ii=irInicio;irInicio=function(m){_ii(m);clearTimeout(kT);kT=setTimeout(function(){waited=0;safeReload()},m?10000:300)}}
+  function wl(){try{if(navigator.wakeLock)navigator.wakeLock.request('screen').catch(function(){})}catch(e){}}
+  wl();document.addEventListener('visibilitychange',function(){if(!document.hidden)wl()});
+};
 SB.after=function(){
   if(SB.mode!=='client')return;
   
@@ -725,10 +748,10 @@ SB.staff=function(db){
 <script>
 (function(){
 var LOCAL=/^(rem_|rst)/,C={},L={},T={},V={},dirty={},LS,db,done=false,chip,ORIG,SZ=60000;
-function status(t){try{if(!chip){chip=document.createElement('div');chip.style.cssText='position:fixed;left:8px;bottom:6px;z-index:9998;font:12px system-ui,sans-serif;color:#fff;background:rgba(0,0,0,.75);padding:3px 8px;border-radius:8px;max-width:90vw';chip.style.pointerEvents='auto';chip.onclick=function(){if(window.__staffLogin)window.__staffLogin()};document.body.appendChild(chip)}chip.textContent=t}catch(e){}}
+function status(t){try{if(!chip){chip=document.createElement('div');chip.style.cssText='position:fixed;left:8px;bottom:6px;z-index:9998;font:12px system-ui,sans-serif;color:#fff;background:rgba(0,0,0,.75);padding:3px 8px;border-radius:8px;max-width:90vw';chip.style.pointerEvents='auto';chip.onclick=function(){if(!window.__KIOSK&&window.__staffLogin)window.__staffLogin()};document.body.appendChild(chip)}chip.textContent=t;if(window.__KIOSK)chip.style.display=/^(⚠|Sin conexión|Modo local)/.test(t)?'':'none'}catch(e){}}
 function run(){if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',run);return}
   var o=document.getElementById('syncov');if(o)o.remove();
-  var s=document.createElement('script');s.textContent=document.getElementById('appjs').textContent;document.body.appendChild(s);try{if(window.__SB&&window.__SB.after)window.__SB.after()}catch(e){}}
+  var s=document.createElement('script');s.textContent=document.getElementById('appjs').textContent;document.body.appendChild(s);try{if(window.__SB&&window.__SB.after)window.__SB.after()}catch(e){}try{if(window.__KIOSK&&window.__SB&&window.__SB.kiosk)window.__SB.kiosk()}catch(e){}}
 function go(){if(done)return;done=true;run()}
 function install(){
   LS=window.localStorage;var P=Storage.prototype;ORIG={get:P.getItem,set:P.setItem,rem:P.removeItem,key:P.key};
@@ -764,8 +787,11 @@ try{
   if(!window.firebase||!window.SIGMA_FB){status('⚠ Firebase no cargó (SDK bloqueado o sin internet)');throw 0}
   firebase.initializeApp(window.SIGMA_FB);
   var started=false;
+  if(window.__KIOSK){try{firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function(){})}catch(e){}
+    firebase.auth().onAuthStateChanged(function(u2){if(started&&!u2){firebase.auth().signInAnonymously().catch(function(){})}})}
   firebase.auth().onAuthStateChanged(function(u){
     if(started)return;started=true;
+    if(window.__KIOSK&&u&&!u.isAnonymous&&!sessionStorage.getItem('__ks')){try{sessionStorage.setItem('__ks','1')}catch(e){}firebase.auth().signOut().catch(function(){}).then(function(){location.reload()});return}
     if(!u||u.isAnonymous){var fin=function(){clearTimeout(to);status((window.__SB&&window.__SB.msg)||'Acceso del personal');go()};try{window.__SB.client(u).then(fin,fin)}catch(e){fin()}return}
     db=firebase.firestore();
     db.collection('kv').get().then(function(snap){
