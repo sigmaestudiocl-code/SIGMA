@@ -247,7 +247,7 @@ function mirror(){
 }
 SB.after=function(){
   if(SB.mode!=='client')return;
-  window.folioNuevo=function(){var y=new Date().getFullYear(),ch='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',b=new Uint8Array(5),r='';crypto.getRandomValues(b);for(var i=0;i<5;i++)r+=ch.charAt(b[i]%32);return 'FOLIO'+y+'-C'+r};
+  
   var $=function(i){return document.getElementById(i)};
   if(!SB.db||!$('rut')||!$('ndoc')||!$('ext'))return;
   var busy='',self=false;
@@ -303,7 +303,7 @@ function merge(c){
   if(!al){try{if(typeof noti==='function')noti('ADMIN','Ingreso de '+c.nombre+' con artista no reconocido ("'+c.artista+'")')}catch(e){}c.artista=''}
   var used={};L.forEach(function(x){if(x&&x!==ex&&x.folio)used[x.folio]=1});A.forEach(function(x){if(x&&x.folio)used[x.folio]=1});
   if(ex&&ex.folio)c.folio=ex.folio;
-  else if(!c.folio||used[c.folio])c.folio=(typeof folioNuevo==='function')?folioNuevo():('FOLIO-'+rnd(6).toUpperCase());
+  else if(!/^FOLIO\d{4}-\d{4,}$/.test(c.folio||'')||used[c.folio])c.folio=(typeof folioNuevo==='function')?folioNuevo():('FOLIO-'+rnd(6).toUpperCase());
   var hy=hoy(),ag=jget('agenda','[]').filter(function(e){return e&&e.doc===c.clave&&e.owner!=='ADMIN'&&e.fecha<=hy}).sort(function(a,b){return a.fecha<b.fecha?1:-1})[0];
   if(c.consentimiento&&ag)c.trabajo={estilo:ag.estilo||'',tam:ag.tam||0,color:ag.color||'',zona:ag.zona||''};
   var now=new Date().toISOString();
@@ -391,6 +391,7 @@ SB.staff=function(db){
 #ahdr+.tabs #bt-kit{--tc:#e03131}#ahdr+.tabs #bt-kit::before{content:"🧤"}
 #ahdr+.tabs #bt-tie{--tc:#1098ad}#ahdr+.tabs #bt-tie::before{content:"🛒"}
 </style>
+<script src="drive-config.js"></script>
 </head>
 <body>
 <div id="toast" class="toast hide"></div>
@@ -1097,6 +1098,7 @@ $('rev').addEventListener('click',function(e){
     var now=new Date().toISOString();
     var aid=archivar(rcur,now);
     if(!aid){$('e-rc').textContent='No se pudo archivar (sin espacio de almacenamiento)';return}
+    try{if(window.__drvArchive)window.__drvArchive()}catch(e){}
     $('rev').classList.add('hide');$('rlist').classList.remove('hide');admTab('rec');recep();badges();window.scrollTo(0,0);toastUp('✓ Consentimiento aprobado y archivado');return;
   }
   if(t.id==='rdev'){
@@ -1109,7 +1111,7 @@ $('rev').addEventListener('click',function(e){
 
 // ---- Folio, archivo, descargas y honorarios ----
 var acur=null,RET={2026:15.25,2027:16,2028:17};
-function folioNuevo(){var y=new Date().getFullYear();try{var k='folioN'+y,n=+(localStorage.getItem(k)||0)+1;localStorage.setItem(k,n);return 'FOLIO'+y+'-'+('0000'+n).slice(-4)}catch(e){return 'FOLIO'+y+'-'+Date.now()}}
+function folioNuevo(){var y=new Date().getFullYear(),re=new RegExp('^FOLIO'+y+'-(\\d+)$'),mx=0;try{['clientes','archivo'].forEach(function(q){var l=[];try{l=JSON.parse(localStorage.getItem(q)||'[]')}catch(e){}l.forEach(function(x){var m=re.exec((x&&x.folio)||'');if(m&&+m[1]>mx)mx=+m[1]})});var k='folioN'+y,n=Math.max(+(localStorage.getItem(k)||0),mx)+1;localStorage.setItem(k,n);return 'FOLIO'+y+'-'+String(n).padStart(4,'0')}catch(e){return 'FOLIO'+y+'-'+String(Math.floor(Date.now()/1000)%100000).padStart(5,'0')}}
 function folioDe(k){return folioNuevo()}
 function getA(){try{return JSON.parse(localStorage.getItem('archivo')||'[]')}catch(e){return[]}}
 function saveA(id,fn){try{var l=getA();l.forEach(function(x){if(x.aid===id)fn(x)});localStorage.setItem('archivo',JSON.stringify(l));return true}catch(e){return false}}
@@ -1120,7 +1122,7 @@ function archivar(k,now){
   try{
     var l=clientes(),c=l.filter(function(x){return clave(x)===k})[0];if(!c)return 0;
     var e=JSON.parse(JSON.stringify(c)),a=getA(),id=+(localStorage.getItem('aidN')||0)+1;
-    if(!/^FOLIO\d{0,4}-/.test(e.folio||''))e.folio=folioDe(k);
+    if(!/^FOLIO\d{4}-\d{4,}$/.test(e.folio||''))e.folio=folioDe(k);
     if(!e.codigo)e.codigo=genCod(a);
     e.estado='aprobado';e.aprobacion={fecha:now,por:(window.CTL?(window.CTL.perfil==='dtc'?'Director Técnico ':'')+window.CTL.nombre+(window.CTL.rut?' · RUT '+window.CTL.rut:''):'ADMIN')};e.envios={tatuador:now};e.motivo='';e.aid=id;
     hist(e,'Aprobado por administración · '+e.folio+' · archivado','ADMIN');noti(e.artista,'Consentimiento de '+e.nombre+' aprobado · comprobante disponible','apr:'+id);
@@ -4268,6 +4270,46 @@ function card(){
     var L=[];try{L=JSON.parse(localStorage.getItem(LK)||'[]')}catch(e){}
     $('seclogl').innerHTML=L.length?L.slice(-30).reverse().map(function(x){return '<div class="sl"><b>'+esc(x.a)+(x.c?' \u00b7 '+esc(x.c):'')+'</b>'+new Date(x.f).toLocaleString('es-CL')+' \u00b7 '+esc(x.t)+'</div>'}).join(''):'<div class="hint">Sin registros todav\u00eda.</div>'})}
 card();document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('#at-cfg'))setTimeout(card,50)},true);
+})();
+</script>
+<script>
+/* Al aprobar administración: genera el PDF final y lo envía (Drive + correo a cliente, tatuador y estudio) vía Apps Script. Ver drive-config.js */
+(function(){
+  var CF=window.SIGMA_DRIVE||{},busy=false,warned=false;
+  function ok(){return CF.url&&CF.token&&String(CF.url).indexOf('https://script.google.com/')===0&&String(CF.token).indexOf('CAMBIAR')<0}
+  function jget(k,d){try{return JSON.parse(localStorage.getItem(k)||d)}catch(e){return JSON.parse(d)}}
+  function msg(t){try{if(typeof toastUp==='function')toastUp(t)}catch(e){}}
+  function b64(bl){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(String(r.result).split(',')[1]||'')};r.onerror=rej;r.readAsDataURL(bl)})}
+  function pack(e,pdf){
+    var ap=e.aprobacion||{},t=jget('tatuadores','[]').filter(function(x){return x&&x.alias===e.artista})[0]||{};
+    return JSON.stringify({token:CF.token,folio:e.folio,codigo:e.codigo||'',nombre:e.nombre,documento:e.documento,correo:e.correo||'',
+      artista:e.artista||'',artistaNombre:t.nombre||'',artistaCorreo:t.correo||t.email||'',
+      aprobacion:{fecha:ap.fecha||'',por:ap.por||''},pdfNombre:e.folio+'-consentimiento.pdf',pdf:pdf});
+  }
+  function run(){
+    if(busy||navigator.onLine===false)return;
+    var sent=jget('drvSent','{}');
+    var L=jget('archivo','[]').filter(function(x){return x&&x.estado==='aprobado'&&x.folio&&x.nombre&&x.consentimiento&&!sent[x.folio]});
+    if(!L.length)return;
+    if(!ok()){if(!warned){warned=true;msg('Envío automático del PDF sin configurar (falta drive-config.js). Usa «Descargar PDF» en el comprobante.')}return}
+    if(typeof consPdf!=='function'||!window.jspdf)return;
+    busy=true;
+    (function next(i){
+      if(i>=L.length){busy=false;return}
+      var e=L[i];
+      consPdf(e).then(b64).then(function(pdf){return fetch(CF.url,{method:'POST',body:pack(e,pdf)})}).then(function(r){return r.json()}).then(function(j){
+        if(!j||!j.ok)throw new Error((j&&j.error)||'envio');
+        var s2=jget('drvSent','{}');s2[e.folio]=1;try{localStorage.setItem('drvSent',JSON.stringify(s2))}catch(x){}
+        try{saveA(e.aid,function(x){x.envios=x.envios||{};x.envios.pdf=new Date().toISOString();x.envios.pdfA=(e.correo||'')+(j.drive?' · Drive':'')})}catch(x){}
+        msg('✓ PDF '+e.folio+' enviado a cliente y tatuador');
+        next(i+1);
+      }).catch(function(){busy=false;msg('No se pudo enviar el PDF de '+e.folio+'. Se reintentará automáticamente.')});
+    })(0);
+  }
+  window.__drvArchive=function(){setTimeout(run,1500)};
+  window.__drvRun=run;
+  window.addEventListener('online',run);
+  setTimeout(run,6000);setInterval(run,300000);
 })();
 </script>
 </body>
