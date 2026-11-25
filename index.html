@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<meta name="app-build" content="2026-11-25.1">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="manifest" href="manifest-v2.json">
@@ -4135,6 +4136,7 @@ function enter(u,fromArt){window.CTL=Object.assign({},u,{fromArt:!!fromArt});win
  if(fromArt||document.body.dataset.role!=='adm'){irA('adm');$('usr').value=u.usr}else vista(true);
  apply();var f=QA('#aareas button').filter(function(b){return !b.classList.contains('ctlh')})[0];if(f)f.click()}
 function leave(){window.CTL=null;window.__ctlHash=null;apply()}
+window.__ctlEnter=enter;
 var _o=admTab;admTab=function(t){if(window.CTL&&!can(t)){t=(AR[actArea()]||[]).filter(can)[0];if(!t){say('Sin acceso a este módulo');return}}_o.call(this,t)};
 $('salir').insertAdjacentHTML('afterend','<button type="button" class="sm hide" id="ctlback" data-nosec>← Mi panel de tatuador</button>');
 $('ctlback').addEventListener('click',function(){leave();admin=false;$('usr').value='';irA('art')});
@@ -4209,6 +4211,74 @@ $('impb').addEventListener('click',function(){
  sd('libro',L);$('impm').textContent='\u2713 '+D.length+' movimientos registrados en el libro contable. Elige el mes para verlos.';
  var m=$('cmes');if(m){m.value='2026-10';try{conta()}catch(e){}}});
 })();}catch(e){console.error("Import:",e)}
+
+/* ===== v6: sesión persistente + actualización automática sin perder la sesión ===== */
+try{(function(){
+var K='rem_ses',U='rem_upd',TA=7*864e5,TD=12*36e5,ready=false,lastAct=Date.now(),busy=false;
+function $$(i){return document.getElementById(i)}
+function role(){return document.body.dataset.role||''}
+function curId(sel,pre){var b=document.querySelector(sel);return b&&b.id?b.id.slice(pre.length):''}
+function snap(){
+  if(!ready)return;
+  var r=role(),s=null;
+  try{
+    if(r==='art'&&window.art&&window.art.alias)s={r:'art',a:window.art.alias,t:curId('#apanel button.on[id^="bt-"]','bt-')};
+    else if(r==='adm'&&window.admin){var C=window.CTL,ar=document.querySelector('#aareas button.on');s={r:'adm',c:C?C.usr:'',fa:C?!!C.fromArt:false,t:curId('#atabs button.on','at-'),ar:ar&&ar.dataset?(ar.dataset.ar||''):''}}
+  }catch(e){}
+  try{if(s){s.ts=Date.now();localStorage.setItem(K,JSON.stringify(s))}else localStorage.removeItem(K)}catch(e){}
+}
+function restore(){
+  var s=null;try{s=JSON.parse(localStorage.getItem(K)||'null')}catch(e){}
+  if(!s||!s.r)return;
+  if(Date.now()-(s.ts||0)>(s.r==='art'?TA:TD)){try{localStorage.removeItem(K)}catch(e){}return}
+  try{
+    if(s.r==='art'){
+      var t=getT().filter(function(x){return x.alias===s.a})[0];
+      if(!t||!t.hash)return;
+      window.art=t;irA('art');
+      if(s.t&&$$('bt-'+s.t))$$('bt-'+s.t).click();
+    }else if(s.r==='adm'){
+      if(s.c){
+        var u=null;try{u=JSON.parse(localStorage.getItem('ctlusers')||'[]').filter(function(x){return x.usr&&x.usr.toUpperCase()===String(s.c).toUpperCase()})[0]}catch(e){}
+        if(!u||!u.activo||!window.__ctlEnter)return;
+        window.__ctlEnter(u,!!s.fa);
+      }else{window.admin=true;irA('adm')}
+      var ab=s.ar?document.querySelector('#aareas button[data-ar="'+s.ar+'"]'):null;if(ab&&!ab.classList.contains('ctlh'))ab.click();
+      var tb=s.t?$$('at-'+s.t):null;if(tb&&!tb.classList.contains('ctlh'))tb.click();
+    }
+  }catch(e){console.error('sesión',e)}
+}
+['pointerdown','keydown','input','touchstart'].forEach(function(ev){document.addEventListener(ev,function(){lastAct=Date.now()},true)});
+document.addEventListener('click',function(){setTimeout(snap,400)},true);
+window.addEventListener('pagehide',snap);
+document.addEventListener('visibilitychange',function(){if(document.hidden)snap();else check()});
+setInterval(snap,5000);
+setTimeout(function(){restore();ready=true;snap()},60);
+
+function build(){var m=document.querySelector('meta[name="app-build"]');return m?m.content:''}
+function check(){
+  if(busy||navigator.onLine===false||!build())return;
+  try{if(navigator.serviceWorker)navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){try{r.update()}catch(e){}})})}catch(e){}
+  fetch(location.pathname+'?_v='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():''}).then(function(tx){
+    var m=new RegExp('<meta name="app-'+'build" content="([^"]+)"').exec(tx||'');
+    if(!m||m[1]===build())return;
+    var last={};try{last=JSON.parse(localStorage.getItem(U)||'{}')}catch(e){}
+    if(last.b===m[1]&&Date.now()-last.t<6e5)return;
+    busy=true;waitIdle(m[1]);
+  }).catch(function(){});
+}
+function waitIdle(b){if(Date.now()-lastAct<60000){setTimeout(function(){waitIdle(b)},15000);return}applyUpd(b)}
+function applyUpd(b){
+  snap();
+  try{localStorage.setItem(U,JSON.stringify({b:b,t:Date.now()}))}catch(e){}
+  try{toastUp('Nueva versión disponible: actualizando…')}catch(e){}
+  var p=[];
+  try{if(window.caches)p.push(caches.keys().then(function(ks){return Promise.all(ks.map(function(k){return caches.delete(k)}))}))}catch(e){}
+  try{if(navigator.serviceWorker)p.push(navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.unregister()}))}))}catch(e){}
+  Promise.all(p).catch(function(){}).then(function(){setTimeout(function(){location.reload()},600)});
+}
+setTimeout(check,8000);setInterval(check,6e5);
+})()}catch(err){console.error('Sesión:',err)}
 </script>
 <script id="sec-adm">
 (function(){
