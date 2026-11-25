@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="2026-11-25.3">
+<meta name="app-build" content="2026-11-25.4">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="manifest" href="manifest-v2.json">
@@ -1121,7 +1121,7 @@ function revHTML(c){
   var img='style="width:100%;max-width:220px;background:#fff;border-radius:6px"',acc='';
   if(c.estado==='pendiente_admin')acc=`<div class="tat"><h3>Recepción</h3><button type="button" class="sm" data-rsel-all="1">Seleccionar todo</button>${['Datos del cliente completos','Consentimiento firmado por el cliente','Verificación de salud completa','Datos del tatuaje completos','Anestesia: autorización firmada, lote, vencimiento y foto (si aplica)','Firma del tatuador presente','Documentos revisados (si corresponde)'].concat(c.menor?['Menor de edad: apoderado, cédulas y firma verificados']:[]).map(function(t,i){return `<label class="chk s"><input type="checkbox" class="rc${i===4||i===6?' op':''}"><span>${t}</span></label>`}).join('')}<div class="err" id="e-rc"></div><button type="button" class="main" id="rapr">Aprobar y emitir comprobante</button><label for="rmot">Si hay fallas, indica qué debe corregir el tatuador</label><textarea id="rmot" rows="3"></textarea><div class="err" id="e-rmot"></div><button type="button" class="main" id="rdev" style="background:var(--mut)">Devolver al tatuador</button></div>`;
   if(c.estado==='devuelto')acc=`<div class="tat" style="border-color:var(--ac)"><b style="color:var(--ac)">Devuelto al tatuador</b><div style="font-size:14px">${esc(c.motivo)}</div></div>`;
-  if(c.estado==='aprobado')acc=compHTML(c)+`<div class="hint">Disponible en el panel del tatuador desde ${fmtF(c.envios&&c.envios.tatuador)}.</div><a class="lnk" data-env="1" href="${esc(envLink(c))}" target="_blank" rel="noopener">${c.envios&&c.envios.correo?'✓ Correo preparado ('+fmtF(c.envios.correo)+') · reenviar':'Enviar comprobante por correo a cliente y tatuador'}</a><button type="button" class="sm" data-ad="${c.aid}">Descargar comprobante (PDF)</button>`;
+  if(c.estado==='aprobado')acc=compHTML(c)+`<div class="hint">Disponible en el panel del tatuador desde ${fmtF(c.envios&&c.envios.tatuador)}.</div><button type="button" class="sm" data-ad="${c.aid}">Descargar comprobante (PDF)</button>`;
   return `<button type="button" class="sm" id="rback">← Volver a la bandeja</button><div class="tat"><h3>${esc(c.nombre)}<span class="tag">${EST[c.estado]||''}</span></h3><dl><dt>Documento</dt><dd>${esc(c.documento)}</dd><dt>Nacimiento</dt><dd>${esc(c.nacimiento)}</dd><dt>Dirección</dt><dd>${esc(c.direccion+', '+c.comuna+', '+c.region)}</dd><dt>Teléfono</dt><dd>${esc(c.telefono)}</dd><dt>Correo</dt><dd>${esc(c.correo)}</dd><dt>Artista</dt><dd>${esc(c.artista)}</dd></dl></div>${repHTML(c)}<div class="tat"><h3>Verificación de salud</h3><div style="font-size:14px">${sal.length?sal.map(function(x){return esc(x)}).join(' · '):'Ninguna condición declarada'}</div><div class="hint">Certificado médico adjunto: ${p.cert?'Sí':'No'}</div></div><div class="tat"><h3>Tatuaje</h3><dl><dt>Tipo</dt><dd>${esc(p.tipo)}</dd><dt>Tamaño</dt><dd>${tamTxt(p)}</dd><dt>Color</dt><dd>${esc(p.color)}</dd><dt>Zona</dt><dd>${esc(p.zona)}</dd><dt>Anestesia</dt><dd>${esc(p.anestesia||'No indicado')}</dd><dt>Obs.</dt><dd>${esc(p.obs||'-')}</dd></dl></div>${anHTML(p)}<div class="tat"><h3>Firmas</h3><div class="hint">Cliente · ${fmtF(s.fecha)}</div><img alt="Firma cliente" src="${s.firma}" ${img}><div class="hint">Tatuador · ${fmtF(p.fecha)}</div><img alt="Firma tatuador" src="${p.firmaArtista}" ${img}></div><div class="tat"><h3>Documentos adjuntos</h3>${docs}</div><div class="tat"><h3>Historial</h3>${hs}</div>${acc}`;
 }
 function abrirRev(k){var c=clientes().filter(function(x){return clave(x)===k})[0];if(!c)return;rcur=k;acur=null;$('rlist').classList.add('hide');$('rev').classList.remove('hide');$('rev').innerHTML=revHTML(c);window.scrollTo(0,0)}
@@ -3540,6 +3540,13 @@ function cEnv(e){var c=cfgE(),ta=tatDe(e.artista),to=e.correo||'',cc=[ta.correo|
     if(navigator.canShare&&navigator.canShare({files:[f]}))return navigator.share({files:[f],title:su,text:'Para: '+to+(cc?' · Copia: '+cc:'')+'\n\n'+bo}).then(mark);
     return cDl(bl,fn).then(function(){omail(to,cc,su,bo+'\n\n(Adjunta el PDF descargado: '+fn+')');mark()})}).catch(function(x){if(x&&x.name==='AbortError')return;say('No se pudo generar o enviar el PDF')})}
 function cDl(bl,fn){if(window.claude&&claude.use)return claude.use('downloads').then(function(d){if(d)return d.save({filename:fn,data:bl})});return new Promise(function(r){var a=document.createElement('a');a.href=URL.createObjectURL(bl);a.download=fn;document.body.appendChild(a);a.click();a.remove();r()})}
+var _cEnv0=cEnv;cEnv=function(e){
+  var CF=window.SIGMA_DRIVE||{};
+  if(CF.url&&CF.token&&String(CF.url).indexOf('https://script.google.com/')===0&&String(CF.token).indexOf('CAMBIAR')<0&&window.__drvRun){
+    try{var s=JSON.parse(localStorage.getItem('drvSent')||'{}');delete s[e.folio];localStorage.setItem('drvSent',JSON.stringify(s))}catch(x){}
+    var m=document.getElementById('cenvm'+e.aid);if(m)m.textContent='Enviando PDF por correo…';
+    window.__drvRun();return}
+  _cEnv0(e)};
 var _ch9=compHTML;compHTML=function(c){var h=_ch9(c);if(!c.aid)return h;var s=c.envios&&c.envios.pdf?'✉ Último envío: '+new Date(c.envios.pdf).toLocaleString('es-CL'):'✉ PDF aún no enviado';
   return h+'<div class="tat"><b>PDF del consentimiento</b><div class="st">Se envía al cliente ('+esc(c.correo||'sin correo')+') y al tatuador, con copia al estudio.</div><div class="st" id="cenvm'+c.aid+'">'+s+'</div><button type="button" class="sm" data-cpdf="'+c.aid+'">📄 Descargar PDF</button> <button type="button" class="sm" data-cenv="'+c.aid+'">✉ Enviar PDF a cliente y tatuador</button></div>'};
 var _ar9=archivar;archivar=function(k,now){var id=_ar9(k,now);if(id){try{var e=getA().filter(function(x){return x.aid===id})[0];noti('ADMIN','Consentimiento '+(e?e.folio:'')+' aprobado: falta enviar el PDF a cliente y tatuador','cenv:'+id)}catch(x){}}return id};
