@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="app-build" content="2026-11-25.5">
+<meta name="app-build" content="2026-11-26.3">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="manifest" href="manifest-v2.json">
@@ -173,12 +173,12 @@ var box=document.createElement('div');box.style.cssText='width:100%;max-width:36
 function close(){o.remove()}
 if(staff){
  var me=(u.email||'').toLowerCase(),db2=firebase.firestore();
- box.innerHTML='<div style="font-weight:700;font-size:17px;margin-bottom:6px">Sesión del personal</div><div id="stfme" style="color:#9a948b;margin-bottom:12px;word-break:break-all"></div><div id="stfadm"></div><button id="stfkiosk" style="'+B+';background:#2a2a2d;color:#eee;width:100%;margin-bottom:8px">Usar este equipo como tablet de clientes</button><button id="stfout" style="'+B+';background:#b3261e;color:#fff;width:100%">Cerrar sesión</button><button id="stfx" style="'+B+';background:#2a2a2d;color:#eee;width:100%;margin-top:8px">Cerrar ventana</button>';
+ box.innerHTML='<div style="font-weight:700;font-size:17px;margin-bottom:6px">Sesión del personal</div><div id="stfme" style="color:#9a948b;margin-bottom:12px;word-break:break-all"></div><div id="stfadm"></div><button id="stfkiosk" style="'+B+';background:#2a2a2d;color:#eee;width:100%;margin-bottom:8px">'+(window.__KIOSK?'Salir del modo tablet':'Usar este equipo como tablet de clientes')+'</button><button id="stfout" style="'+B+';background:#b3261e;color:#fff;width:100%">Cerrar sesión</button><button id="stfx" style="'+B+';background:#2a2a2d;color:#eee;width:100%;margin-top:8px">Cerrar ventana</button>';
  o.appendChild(box);document.body.appendChild(o);
  document.getElementById('stfme').textContent=me;
  document.getElementById('stfout').onclick=function(){au.signOut().then(function(){location.reload()})};
  document.getElementById('stfx').onclick=close;
- document.getElementById('stfkiosk').onclick=function(){try{localStorage.setItem('rst_kiosk','1')}catch(e){}au.signOut().then(function(){location.reload()})};
+ document.getElementById('stfkiosk').onclick=function(){try{if(window.__KIOSK)localStorage.removeItem('rst_kiosk');else localStorage.setItem('rst_kiosk','1')}catch(e){}location.reload()};
  db2.doc('staff/'+me).get().then(function(d){
   var inf=function(t){var e=document.getElementById('stfadm');if(e)e.innerHTML='<div style="font-size:13px;color:#e5b84b;margin:0 0 12px"></div>',e.firstChild.textContent=t};if(!d.exists){inf('Tu correo ('+me+') no está en la colección staff de Firestore, o está escrito distinto.');return}if((d.data()||{}).rol!=='admin'){inf('Tu rol es «'+((d.data()||{}).rol||'vacío')+'». Debe ser exactamente: admin');return}
   var A=document.getElementById('stfadm');
@@ -206,7 +206,7 @@ document.getElementById('stfgo').onclick=function(){
  var em=document.getElementById('stfem').value.trim().toLowerCase(),pw=document.getElementById('stfpw').value;
  if(!em||!pw){msg('Escribe correo y contraseña');return}
  var b=this;b.disabled=true;msg('Entrando…',1);
- au.signInWithEmailAndPassword(em,pw).then(function(){try{localStorage.removeItem('rst_kiosk')}catch(e){}location.reload()}).catch(function(e){b.disabled=false;var c=e&&e.code;msg(c==='auth/invalid-credential'||c==='auth/wrong-password'||c==='auth/user-not-found'||c==='auth/invalid-email'?'Correo o contraseña incorrectos':c==='auth/too-many-requests'?'Demasiados intentos, espera unos minutos':'Error: '+(c||(e&&e.message)))})};
+ au.signInWithEmailAndPassword(em,pw).then(function(){location.reload()}).catch(function(e){b.disabled=false;var c=e&&e.code;msg(c==='auth/invalid-credential'||c==='auth/wrong-password'||c==='auth/user-not-found'||c==='auth/invalid-email'?'Correo o contraseña incorrectos':c==='auth/too-many-requests'?'Demasiados intentos, espera unos minutos':'Error: '+(c||(e&&e.message)))})};
 document.getElementById('stfrs').onclick=function(){
  var em=document.getElementById('stfem').value.trim().toLowerCase();
  if(!em){msg('Escribe tu correo arriba y vuelve a tocar');return}
@@ -214,6 +214,7 @@ document.getElementById('stfrs').onclick=function(){
 };</script>
 <script>(function(){
 var SB=window.__SB={mode:'',msg:''};
+window.__sigSmall=function(cv){try{var k=Math.min(1,700/cv.width),c=document.createElement('canvas');c.width=Math.max(1,Math.round(cv.width*k));c.height=Math.max(1,Math.round(cv.height*k));var x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.imageSmoothingQuality='high';x.drawImage(cv,0,0,c.width,c.height);return c.toDataURL('image/png')}catch(e){return cv.toDataURL('image/png')}};
 window.__dayOf=function(iso){var d=new Date(iso);return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)};
 window.__park=function(L,k,day){
   if(window.__SB&&window.__SB.mode==='client')return false;
@@ -257,7 +258,7 @@ function mirror(){
       var ver=(m?m.v:0)+1,base=dev+'_'+String(c.clave).replace(/[^0-9A-Za-z]/g,''),n=Math.max(1,Math.ceil(s.length/SZ)),ops=[];
       busy[c.clave]=1;
       for(var i=0;i<n;i++)ops.push(db.doc('ingresos/'+base+'_v'+ver+'__'+i).set({b:base,v:ver,i:i,n:n,d:s.slice(i*SZ,(i+1)*SZ)}));
-      Promise.all(ops).then(function(){sent[c.clave]={h:h,v:ver};prev.call(localStorage,'rst_sent',JSON.stringify(sent));delete busy[c.clave];st('✓ Datos enviados al estudio');if(window.__KIOSK)setTimeout(purge,1500);clearTimeout(t);t=setTimeout(run,500)}).catch(function(){delete busy[c.clave];clearTimeout(t);t=setTimeout(run,20000)});
+      Promise.all(ops).then(function(){sent[c.clave]={h:h,v:ver};prev.call(localStorage,'rst_sent',JSON.stringify(sent));delete busy[c.clave];st('✓ Datos enviados al estudio');if(window.__KIOSK)setTimeout(purge,1500);clearTimeout(t);t=setTimeout(run,500)}).catch(function(e){delete busy[c.clave];st('⚠ No se pudo enviar al estudio ('+((e&&e.code)||'error')+')');clearTimeout(t);t=setTimeout(run,20000)});
     });
   }
   P.setItem=function(k,v){var r=prev.apply(this,arguments);if(this===localStorage&&k==='clientes'){clearTimeout(t);t=setTimeout(run,800)}return r};
@@ -266,9 +267,12 @@ function mirror(){
 }
 SB.kiosk=function(){
   var $=function(i){return document.getElementById(i)},boot=Date.now(),idleT=null,kT=null,waited=0;
-  try{localStorage.setItem('agenda',JSON.stringify(jget('agenda','[]').filter(function(e){return !(e&&e.__r)})))}catch(e){}
+  if(SB.mode!=='staff')try{localStorage.setItem('agenda',JSON.stringify(jget('agenda','[]').filter(function(e){return !(e&&e.__r)})))}catch(e){}
+  try{if(typeof irInicio==='function')irInicio()}catch(e){}
+  try{if(typeof buscar==='function')buscar=function(){return null}}catch(e){}
   try{if(typeof irA==='function')irA('cli')}catch(e){}
-  function safeReload(){if(SB.pending&&SB.pending()>0&&waited<90){waited+=2;setTimeout(safeReload,2000);return}location.reload()}
+  function pend(){return SB.pending?SB.pending():(window.__kvPending?window.__kvPending():0)}
+  function safeReload(){if(pend()>0&&waited<(SB.mode==='staff'?600:90)){waited+=2;setTimeout(safeReload,2000);return}location.reload()}
   function arm(){clearTimeout(idleT);idleT=setTimeout(function(){
     var pristine=false;try{pristine=!$('f').classList.contains('hide')&&!$('rut').value&&!$('nombre').value}catch(e){}
     if(pristine&&Date.now()-boot<18e5){arm();return}
@@ -316,7 +320,7 @@ SB.after=function(){
 
 /* ===== PERSONAL (sesión iniciada): publica datos mínimos y recibe ingresos ===== */
 function S(v,n){return String(v==null?'':v).replace(/[<>]/g,'').slice(0,n||200)}
-function IMG(v){v=String(v||'');return(/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+\/=]+$/.test(v)&&v.length<900000)?v:''}
+function IMG(v){v=String(v||'');return(/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+\/=]+$/.test(v)&&v.length<2500000)?v:''}
 function clean(r){
   if(!r||typeof r!=='object')return null;
   var k=S(r.clave,24).toUpperCase().replace(/[^0-9A-Z]/g,'');if(k.length<5)return null;
@@ -335,6 +339,8 @@ function merge(c){
   if(ex&&(re>rn||(re===rn&&rn>=1)))return false;
   var T=[];try{T=(typeof getT==='function')?getT():jget('tatuadores','[]')}catch(e){}
   var al=T.some(function(t){return t.alias===c.artista});
+  if(!al){var g0=jget('agenda','[]').filter(function(e){return e&&e.doc===c.clave&&e.owner&&e.owner!=='ADMIN'&&e.fecha<=hoy()}).sort(function(a,b){return a.fecha<b.fecha?1:-1})[0];
+    if(g0&&T.some(function(t){return t.alias===g0.owner})){c.artista=g0.owner;al=true}}
   if(!al){try{if(typeof noti==='function')noti('ADMIN','Ingreso de '+c.nombre+' con artista no reconocido ("'+c.artista+'")')}catch(e){}c.artista=''}
   var used={};L.forEach(function(x){if(x&&x!==ex&&x.folio)used[x.folio]=1});A.forEach(function(x){if(x&&x.folio)used[x.folio]=1});
   if(ex&&ex.folio)c.folio=ex.folio;
@@ -367,6 +373,12 @@ SB.staff=function(db){
   }
   P.setItem=function(k,v){var r=prev.apply(this,arguments);if(this===localStorage){if(k==='agenda'){clearTimeout(tc);tc=setTimeout(pubCitas,4000)}else if(k==='tatuadores'){clearTimeout(ta);ta=setTimeout(pubArt,2500)}}return r};
   setTimeout(pubArt,3000);setTimeout(pubCitas,5000);setInterval(pubCitas,1800000);
+  function relink(){try{var L=jget('clientes','[]'),T=(typeof getT==='function'?getT():jget('tatuadores','[]')),Ag=jget('agenda','[]'),ch=false;
+    L.forEach(function(c){if(!c||!c.consentimiento||c.artista)return;var d=window.__dayOf(c.consentimiento.fecha),k=String(c.clave||'').split('~')[0];
+      var e=Ag.filter(function(a){return a&&a.doc===k&&a.owner&&a.owner!=='ADMIN'&&a.fecha===d})[0];
+      if(e&&T.some(function(t){return t.alias===e.owner})){c.artista=e.owner;c.vistoArt=false;ch=true}});
+    if(ch)localStorage.setItem('clientes',JSON.stringify(L))}catch(e){}}
+  setTimeout(relink,9000);setInterval(relink,600000);
   function proc(s){
     try{
       var G={};
@@ -765,7 +777,7 @@ function run(){if(document.readyState==='loading'){document.addEventListener('DO
   var s=document.createElement('script');s.textContent=document.getElementById('appjs').textContent;document.body.appendChild(s);try{if(window.__SB&&window.__SB.after)window.__SB.after()}catch(e){}try{if(window.__KIOSK&&window.__SB&&window.__SB.kiosk)window.__SB.kiosk()}catch(e){}}
 function go(){if(done)return;done=true;run()}
 function install(){
-  LS=window.localStorage;var P=Storage.prototype;ORIG={get:P.getItem,set:P.setItem,rem:P.removeItem,key:P.key};
+  window.__kvPending=function(){return Object.keys(dirty).length};LS=window.localStorage;var P=Storage.prototype;ORIG={get:P.getItem,set:P.setItem,rem:P.removeItem,key:P.key};
   P.getItem=function(k){if(this!==LS||LOCAL.test(k))return ORIG.get.call(this,k);return Object.prototype.hasOwnProperty.call(C,k)?C[k]:null};
   P.setItem=function(k,v){if(this!==LS||LOCAL.test(k))return ORIG.set.call(this,k,v);C[k]=String(v);push(k)};
   P.removeItem=function(k){if(this!==LS||LOCAL.test(k))return ORIG.rem.call(this,k);delete C[k];push(k)};
@@ -799,10 +811,9 @@ try{
   firebase.initializeApp(window.SIGMA_FB);
   var started=false;
   if(window.__KIOSK){try{firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function(){})}catch(e){}
-    firebase.auth().onAuthStateChanged(function(u2){if(started&&!u2){firebase.auth().signInAnonymously().catch(function(){})}})}
+    firebase.auth().onAuthStateChanged(function(u2){if(started&&!u2){firebase.auth().signInAnonymously().then(function(){location.reload()}).catch(function(){})}})}
   firebase.auth().onAuthStateChanged(function(u){
     if(started)return;started=true;
-    if(window.__KIOSK&&u&&!u.isAnonymous&&!sessionStorage.getItem('__ks')){try{sessionStorage.setItem('__ks','1')}catch(e){}firebase.auth().signOut().catch(function(){}).then(function(){location.reload()});return}
     if(!u||u.isAnonymous){var fin=function(){clearTimeout(to);status((window.__SB&&window.__SB.msg)||'Acceso del personal');go()};try{window.__SB.client(u).then(fin,fin)}catch(e){fin()}return}
     db=firebase.firestore();
     db.collection('kv').get().then(function(snap){
@@ -2659,7 +2670,7 @@ $('cf').addEventListener('submit',function(ev){
   ok=setErr('datos',$('datos').checked?'':'Debes confirmar que fuiste informado/a sobre el tratamiento de tus datos personales')&&ok;
   ok=setErr('firma',firmado?'':'Falta la firma del cliente')&&ok;
   if(!ok)return;
-  var ev0=citaHoy(cur.clave);if(!ev0){setErr('firma',msgFecha(cur.clave)+' No puedes firmar el consentimiento.');try{$('e-firma').scrollIntoView({block:'center'})}catch(x){}return}var reg={aprobado:true,fecha:new Date().toISOString(),firma:cv.toDataURL('image/png'),fotos:$('fotos').checked,datos:'Ley 19.628 mod. Ley 21.719',datosAcepta:$('datos').checked};
+  var ev0=citaHoy(cur.clave);if(!ev0){setErr('firma',msgFecha(cur.clave)+' No puedes firmar el consentimiento.');try{$('e-firma').scrollIntoView({block:'center'})}catch(x){}return}var reg={aprobado:true,fecha:new Date().toISOString(),firma:(window.__sigSmall?window.__sigSmall(cv):cv.toDataURL('image/png')),fotos:$('fotos').checked,datos:'Ley 19.628 mod. Ley 21.719',datosAcepta:$('datos').checked};
   try{var l=JSON.parse(localStorage.getItem('clientes')||'[]');l.forEach(function(x){if(clave(x)===cur.clave){x.consentimiento=reg;x.trabajo={estilo:ev0.estilo||'',tam:ev0.tam||0,color:ev0.color||'',zona:ev0.zona||''};x.estado='firmado_cliente';x.vistoArt=false;hist(x,'Consentimiento firmado por el cliente','Cliente');noti(x.artista,'Nuevo consentimiento firmado por '+x.nombre+' ('+x.folio+')'+matchTxt(x))}});localStorage.setItem('clientes',JSON.stringify(l))}catch(e){}
   $('cf').classList.add('hide');
   finCliente(cur);var _x='<div class="ok"><h2>✓ Consentimiento firmado</h2><dl><dt>Folio</dt><dd>'+esc(cur.folio)+'</dd><dt>Cliente</dt><dd>'+esc(cur.nombre)+'</dd><dt>Documento</dt><dd>'+esc(cur.documento)+'</dd><dt>Artista</dt><dd>'+esc(cur.artista)+'</dd><dt>Fecha</dt><dd>'+new Date().toLocaleString('es-CL')+'</dd><dt>Firma</dt><dd><img alt="Firma" src="'+reg.firma+'" style="width:100%;max-width:260px;background:#fff;border-radius:6px"></dd></dl></div>';
@@ -4408,19 +4419,19 @@ card();document.addEventListener('click',function(e){if(e.target.closest&&e.targ
     var sent=jget('drvSent','{}');
     var L=jget('archivo','[]').filter(function(x){return x&&x.estado==='aprobado'&&x.folio&&x.nombre&&x.consentimiento&&!sent[x.folio]});
     if(!L.length)return;
-    if(!ok()){if(!warned){warned=true;msg('Envío automático del PDF sin configurar (falta drive-config.js). Usa «Descargar PDF» en el comprobante.')}return}
+    if(!ok()){try{if(window.__status)window.__status('⚠ Envío de PDF/Drive sin configurar (drive-config.js)')}catch(x){}if(!warned){warned=true;msg('Envío automático del PDF sin configurar (falta drive-config.js). Usa «Descargar PDF» en el comprobante.')}return}
     if(typeof consPdf!=='function'||!window.jspdf)return;
     busy=true;
     (function next(i){
       if(i>=L.length){busy=false;return}
       var e=L[i];
-      consPdf(e).then(b64).then(function(pdf){return fetch(CF.url,{method:'POST',body:pack(e,pdf)})}).then(function(r){return r.json()}).then(function(j){
-        if(!j||!j.ok)throw new Error((j&&j.error)||'envio');
+      consPdf(e).then(b64).then(function(pdf){return fetch(CF.url,{method:'POST',body:pack(e,pdf)})}).then(function(r){return r.text().then(function(t){try{return JSON.parse(t)}catch(x){throw new Error('el script no respondió como aplicación web (en Implementar debe ser acceso «Cualquier usuario»)')}})}).then(function(j){
+        if(!j||!j.ok)throw new Error((j&&j.error)||'el script respondió sin ok');
         var s2=jget('drvSent','{}');s2[e.folio]=1;try{localStorage.setItem('drvSent',JSON.stringify(s2))}catch(x){}
         try{saveA(e.aid,function(x){x.envios=x.envios||{};x.envios.pdf=new Date().toISOString();x.envios.pdfA=(e.correo||'')+(j.drive?' · Drive':'')})}catch(x){}
-        msg('✓ PDF '+e.folio+' enviado a cliente y tatuador');
+        msg('✓ PDF '+e.folio+' enviado'+(j.drive?' y guardado en Drive':' · pero tu script NO confirmó que lo guardó en Drive'));
         next(i+1);
-      }).catch(function(){busy=false;msg('No se pudo enviar el PDF de '+e.folio+'. Se reintentará automáticamente.')});
+      }).catch(function(err){busy=false;msg('No se pudo enviar el PDF de '+e.folio+': '+((err&&err.message)||'error de conexión')+'. Se reintentará.')});
     })(0);
   }
   window.__drvArchive=function(){setTimeout(run,1500)};
