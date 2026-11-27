@@ -2127,7 +2127,7 @@ function payInfo(c){
       h+=c.verif?'<div class="st ok2">✓ Verificado por administración</div>':'<div class="st" style="color:var(--ac)">⚠ Informado por el artista · por verificar</div><button type="button" class="sm" data-verif="1">Verificar pago</button>';
       if(c.monto&&c.monto!==neto(c))h+='<div class="st">Monto distinto al cobro ('+clp(neto(c))+')</div>';
     }
-  }else if(c.mes===ym(Date.now())&&bloqueada(c.alias))h='<div class="st" style="color:var(--ac)">Agenda deshabilitada: spot sin pagar después del día 3</div>';
+  }else if(c.mes===ym(Date.now())&&bloqueadaAuto(c.alias))h='<div class="st" style="color:var(--ac)">Agenda deshabilitada: spot sin pagar después del día 3</div>';
   return h;
 }
 $('aspt').addEventListener('click',function(e){
@@ -2143,7 +2143,7 @@ function spagos(){
     var c=CB.filter(function(x){return x.id===art.alias+'|'+m})[0]||nuevoCobro(t,m,[]),G=t.contrato==='Guest',nx=!G&&m!==cur,od=!G&&m===cur&&d>3&&!c.pagado;
     h+='<div class="tat" data-m="'+m+'"><h3>Spot '+m+'<span class="tag">'+(c.pagado?'Pagado':od?'Vencido':'Pendiente')+'</span></h3><div class="st">'+esc(t.spot)+' · '+t.contrato+' · '+clp(neto(c))+(c.dt?' (con descuento)':'')+'</div>'+
     (c.pagado?'<div class="st ok2">Pagado el '+esc(c.fp)+' · '+esc(c.medio||'')+(c.monto?' · '+clp(c.monto):'')+(c.talla?' · guantes talla '+esc(c.talla):'')+(c.via==='artista'?(c.verif?' · verificado':' · en verificación'):'')+'</div>':
-      '<div class="st"'+(od?' style="color:var(--ac)"':'')+'>'+(nx?'Disponible desde el día 30 · vence el día 3 de '+m:od?'Plazo vencido el día 3: agenda deshabilitada hasta que pagues':(G?'Pago de tu estadía guest: '+clp(neto(c))+' ('+guestDesc(t.guest||{})+')':'Vence el día 3 de '+m))+'</div><div class="row"><div><label>Monto pagado ($)</label><input type="number" class="spm" min="1" value="'+neto(c)+'"></div><div><label>Fecha</label><input type="date" class="spe" value="'+hoyF()+'"></div></div><label>Medio de pago</label><select class="spd"><option>Transferencia</option><option>Efectivo</option></select>'+(c.kit.length?'<label>Talla de guantes (para tu kit)</label><select class=\"spt\">'+['S','M','L','XL'].map(function(z){return '<option'+(c.talla===z?' selected':'')+'>'+z+'</option>'}).join('')+'</select>':'')+'<label>Comprobante (imagen o PDF)</label><input type="file" class="spf" accept="image/*,application/pdf"><div class="st spn"></div><div class="err"></div><button type="button" class="main" data-spay="1" style="margin-top:8px;padding:10px">Registrar pago del spot</button>')+'</div>';
+      '<div class="st"'+(od?' style="color:var(--ac)"':'')+'>'+(nx?'Disponible desde el día 30 · vence el día 3 de '+m:od?(accOf(art.alias)==='habilitado'?'Plazo vencido el día 3 · administración mantiene tus funciones habilitadas':'Plazo vencido el día 3: agenda deshabilitada hasta que pagues'):(G?'Pago de tu estadía guest: '+clp(neto(c))+' ('+guestDesc(t.guest||{})+')':'Vence el día 3 de '+m))+'</div><div class="row"><div><label>Monto pagado ($)</label><input type="number" class="spm" min="1" value="'+neto(c)+'"></div><div><label>Fecha</label><input type="date" class="spe" value="'+hoyF()+'"></div></div><label>Medio de pago</label><select class="spd"><option>Transferencia</option><option>Efectivo</option></select>'+(c.kit.length?'<label>Talla de guantes (para tu kit)</label><select class=\"spt\">'+['S','M','L','XL'].map(function(z){return '<option'+(c.talla===z?' selected':'')+'>'+z+'</option>'}).join('')+'</select>':'')+'<label>Comprobante (imagen o PDF)</label><input type="file" class="spf" accept="image/*,application/pdf"><div class="st spn"></div><div class="err"></div><button type="button" class="main" data-spay="1" style="margin-top:8px;padding:10px">Registrar pago del spot</button>')+'</div>';
   });
   $('spay').innerHTML=h;
 }
@@ -2178,14 +2178,14 @@ function lockAg(root){
   if(root.id!=='aag'||!art||!bloqueada(art.alias))return;
   var c=root.querySelector('.cdd');if(!c||c.querySelector('.blk'))return;
   var b=document.createElement('div');b.className='blk err';b.style.margin='8px 0';
-  b.textContent='Agenda deshabilitada: tu spot de '+ym(Date.now())+' no está pagado (el plazo vencia el día 3). Regístralo en Mi spot para volver a usarla.';
+  b.textContent=accOf(art.alias)==='bloqueado'?'Agenda deshabilitada por administración. Contáctala para volver a usarla.':'Agenda deshabilitada: tu spot de '+ym(Date.now())+' no está pagado (el plazo vencia el día 3). Regístralo en Mi spot para volver a usarla.';
   c.insertBefore(b,c.firstChild);
   [].forEach.call(c.querySelectorAll('input,select,button,textarea'),function(x){x.disabled=true});
 }
 function genSpot(){
   var n=new Date(),d=n.getDate(),last=new Date(n.getFullYear(),n.getMonth()+1,0).getDate(),cur=ym(n.getTime()),nx=ym(new Date(n.getFullYear(),n.getMonth()+1,1).getTime()),CB=ld('cobros','[]');
   getT().forEach(function(t){
-    if(!t.spot||!TAR[t.contrato]||t.contrato==='Guest')return;
+    if(!t.spot||!TAR[t.contrato]||t.contrato==='Guest'||t.acceso)return;
     var pd=function(m){var c=CB.filter(function(x){return x.id===t.alias+'|'+m})[0];return c&&c.pagado};
     if(d>=Math.min(30,last)&&!pd(nx)){noti(t.alias,'💳 Recordatorio de pago: hoy toca pagar tu spot de '+nx+'. Págalo en Mi spot (plazo hasta el día 3) para mantener tus funciones habilitadas; si no, se desactivan el día 4.','sp30:'+t.alias+':'+nx);noti('ADMIN','Recordatorio: hoy se habilita el pago de spots de '+nx+'. Artistas sin pago el día 4 quedan desactivados.','sp30a:'+nx)}
     if(d<=3&&!pd(cur)){noti(t.alias,'⚠️ Tu spot de '+cur+' vence el día 3: paga para mantener tus funciones habilitadas. Mañana a partir del día 4 se desactivan si no está pagado.','sp3:'+t.alias+':'+cur);if(d===1)noti(t.alias,'💳 Recuerda pagar tu spot de '+cur+' hasta el día 3; el día 4 se desactivan tus funciones.','sp1:'+t.alias+':'+cur);if(d===3)noti(t.alias,'⏰ Último día para pagar tu spot de '+cur+': el día 4 se desactivan tus funciones.','sp3u:'+t.alias+':'+cur)}
@@ -2906,6 +2906,34 @@ listar=function(){
   selBar();renderBaja();
 };
 $('tl').addEventListener('change',function(e){if(e.target.classList.contains('tsel'))selBar()});
+// ---- Habilitar / bloquear funciones del tatuador (manual, independiente del pago) ----
+// t.acceso: vacío = automático (según pago del spot) · 'habilitado' = forzado habilitado · 'bloqueado' = forzado bloqueado
+function accOf(a){var t=getT().filter(function(x){return x.alias===a})[0];return (t&&t.acceso)||''}
+var _bq1=bloqueada;
+function bloqueadaAuto(a){return _bq1(a)}
+bloqueada=function(a){var o=accOf(a);if(o==='bloqueado')return true;if(o==='habilitado')return false;return _bq1(a)};
+function bqMsg(d){return accOf(art.alias)==='bloqueado'?'Tu agenda está deshabilitada por administración. Contáctala para reactivarla.':d}
+function accHTML(t,i){
+  var o=t.acceso||'',bq=bloqueada(t.alias);
+  var st=o==='bloqueado'?'<span style="color:var(--ac)">● Bloqueadas manualmente</span>':o==='habilitado'?'<span style="color:var(--ok)">● Habilitadas manualmente</span>':bq?'<span style="color:var(--ac)">● Bloqueadas · spot sin pagar (automático)</span>':'<span style="color:var(--ok)">● Habilitadas (automático)</span>';
+  var hint=o?'Modo manual: ignora si el spot está pagado o no.':'Modo automático: se bloquean si el spot no está pagado después del día 3.';
+  return '<div id="acc'+i+'" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd)"><div class="st"><b>Funciones del tatuador:</b> '+st+'</div>'+
+    '<button type="button" class="sm" data-acc="'+(bq?'habilitado':'bloqueado')+'" data-i="'+i+'">'+(bq?'Habilitar funciones':'Bloquear funciones')+'</button>'+
+    (o?' <button type="button" class="sm" data-acc="auto" data-i="'+i+'">Volver a automático (según pago)</button>':'')+
+    '<div class="hint">'+hint+'</div></div>';
+}
+var _tc0=tatCard;
+tatCard=function(t,i){var h=_tc0(t,i);return h.replace(/<\/div>$/,accHTML(t,i)+'</div>')};
+$('tl').addEventListener('click',function(e){
+  var b=e.target.closest('[data-acc]');if(!b)return;
+  var v=b.dataset.acc;
+  if(v==='bloqueado'&&!b.dataset.ok){b.dataset.ok='1';b.textContent='¿Seguro? Toca de nuevo para bloquear';return}
+  var T=getT(),t=T[+b.dataset.i];if(!t)return;
+  if(v==='auto')delete t.acceso;else t.acceso=v;
+  setT(T);
+  noti(t.alias,v==='bloqueado'?'Administración deshabilitó tus funciones (agenda). Contáctala para reactivarlas.':v==='habilitado'?'Administración habilitó tus funciones.':'Tus funciones vuelven a depender del pago de tu spot.');
+  listar();
+});
 function tbOpen(mode){
   var n=document.querySelectorAll('.tsel:checked').length;if(!n)return;
   var c=$('tbc');c.dataset.mode=mode;c.classList.remove('hide');$('e-tbc').textContent='';$('tbf').value=hoyF();
@@ -3124,7 +3152,7 @@ $('acot2').addEventListener('click',function(ev){
   var b=ev.target.closest('button');if(!b||!art)return;var L=AGL(),id=b.dataset.cot||b.dataset.cdone,e=L.filter(function(x){return String(x.id)===String(id)})[0],er=$('cotm');
   if(b.dataset.cot){
     if(!e||e.owner!=='ADMIN'||e.tipo!=='tat'){er.textContent='Esta oferta ya no está disponible';cotRender();return}
-    if(typeof bloqueada==='function'&&bloqueada(art.alias)){er.textContent='Tu agenda está deshabilitada: paga tu spot para tomar ofertas';return}
+    if(typeof bloqueada==='function'&&bloqueada(art.alias)){er.textContent=bqMsg('Tu agenda está deshabilitada: paga tu spot para tomar ofertas');return}
     var ids=[art.alias,'ADMIN'],p=partnerOf(art.alias);if(p)ids.push(p.alias);
     var cf=L.filter(function(x){return x.id!==e.id&&ids.indexOf(x.owner)>-1&&x.fecha===e.fecha&&e.ini<x.fin&&e.fin>x.ini&&x.tipo!=='adv'&&x.tipo!=='con'&&!(x.owner==='ADMIN'&&x.tipo==='tat')})[0];
     if(cf){er.textContent='No puedes tomarla: se cruza con '+(cf.owner==='ADMIN'?'un bloqueo del estudio':'una cita')+' de '+cf.ini+' a '+cf.fin;return}
@@ -3178,7 +3206,7 @@ $('aag').addEventListener('click',function(ev){
   var b=ev.target.closest('[data-cotag]');if(!b||!art)return;
   var L=AGL(),e=L.filter(function(x){return String(x.id)===b.dataset.cotag})[0],m='';
   if(!e||e.owner!=='ADMIN'||e.tipo!=='tat')m='Esta oferta ya no está disponible';
-  else if(typeof bloqueada==='function'&&bloqueada(art.alias))m='Tu agenda está deshabilitada: paga tu spot para tomar ofertas';
+  else if(typeof bloqueada==='function'&&bloqueada(art.alias))m=bqMsg('Tu agenda está deshabilitada: paga tu spot para tomar ofertas');
   else{var ids=[art.alias,'ADMIN'],p=partnerOf(art.alias);if(p)ids.push(p.alias);
     var cf=L.filter(function(x){return x.id!==e.id&&ids.indexOf(x.owner)>-1&&x.fecha===e.fecha&&e.ini<x.fin&&e.fin>x.ini&&x.tipo!=='adv'&&x.tipo!=='con'&&!(x.owner==='ADMIN'&&x.tipo==='tat')})[0];
     if(cf)m='No puedes tomarla: se cruza con '+(cf.owner==='ADMIN'?'un bloqueo del estudio':'una cita')+' de '+cf.ini+' a '+cf.fin}
@@ -3949,7 +3977,7 @@ $('acot2').addEventListener('click',function(e){var c=e.target.closest('[data-q]
  if(q.tat!==art.alias)return;
  if(e.target.closest('[data-cqwa]')){var d=q.contacto.replace(/[\s\-().+]/g,'');if(/^\d{8,15}$/.test(d)){if(d.length===9&&d[0]==='9')d='56'+d;else if(d.length===8)d='569'+d;window.open('https://wa.me/'+d+'?text='+encodeURIComponent('Hola '+q.nombre.split(' ')[0]+'! Mi nombre es '+(art.nombre||art.alias).split(' ')[0]+' ("'+art.alias+'") de Sigma Tattoo Studio. Recibí tu solicitud de cotización de tatuaje, cuéntame un poco más sobre tu proyecto para poder asesorarte 😊'),'_blank')}else if(/^https?:/.test(q.contacto))window.open(q.contacto,'_blank');else toastUp('Escríbele a '+q.contacto);return}
  if(e.target.closest('[data-cqag]')){var tt=Math.round(+Q('.qt',c).value),f=Q('.qf',c).value,i=Q('.qi',c).value,z=Q('.qe',c).value;if(!(tt>0)){er.textContent='Ingresa el total del trabajo';return}if(!f||f<hoyF()){er.textContent='Elige una fecha válida';return}if(!i||!z||z<=i){er.textContent='Revisa el horario de la sesión';return}
-  if(typeof bloqueada==='function'&&bloqueada(art.alias)){er.textContent='Tu agenda está deshabilitada: paga tu spot';return}
+  if(typeof bloqueada==='function'&&bloqueada(art.alias)){er.textContent=bqMsg('Tu agenda está deshabilitada: paga tu spot');return}
   var L=AGL(),ids=[art.alias,'ADMIN'],pr=partnerOf(art.alias);if(pr)ids.push(pr.alias);var cf=L.filter(x=>ids.indexOf(x.owner)>-1&&x.fecha===f&&i<x.fin&&z>x.ini&&x.tipo!=='adv'&&x.tipo!=='con')[0];if(cf){er.textContent='Se cruza con una cita o bloqueo de '+cf.ini+' a '+cf.fin;return}
   L.push({id:Date.now(),owner:art.alias,tipo:'tat',via:'estudio',fecha:f,ini:i,fin:z,titulo:q.nombre,doc:q.doc,cli:q.doc,contacto:q.contacto,tam:q.tam,estilo:q.estilo,color:q.color,zona:q.zona,ref:q.ref,total:tt,res:0,tomada:new Date().toISOString(),cq:q.id});sd('agenda',L);q.e='agendada';q.total=tt;q.fecha=f;sd('cotiz',C);noti('ADMIN',art.alias+' agendó la cotización #'+q.num+' ('+q.nombre+') el '+fCL(f)+' '+i+' · total '+clp(tt)+' · agenda del estudio');if(window.AGA)AGA.render();cotRender();return}
  if(e.target.closest('[data-cqno]')){var b=e.target.closest('[data-cqno]');if(!b.dataset.ok){b.dataset.ok='1';b.textContent='Confirmo: el cliente no se tatuará conmigo por contacto directo. Toca de nuevo';return}q.e='noagenda';sd('cotiz',C);noti('ADMIN',art.alias+' cerró la cotización #'+q.num+' ('+q.nombre+') sin agendar. Si el cliente se tatúa por contacto directo es mala práctica.');cotRender()}});
