@@ -747,8 +747,8 @@ SB.staff=function(db){
 <div><label for="tcon">Tipo de contrato</label><select id="tcon"><option value="">Seleccionar…</option><option>Full</option><option>Compartido</option><option>Guest</option></select><div class="err" id="e-tcon"></div></div>
 </div>
 <div class="tat"><label class="chk s"><input type="checkbox" id="timp"><span>Asignar impresora térmica (solo si es necesaria)</span></label><div id="timpb" class="hide"><label for="timm">Impresora disponible (desde Activos)</label><select id="timm"></select><div class="err" id="e-timm"></div><div class="hint">Compartido: la impresora es para ambos tatuadores del spot. Full: es para el spot. Cada tatuador confirma la recepción conforme en su app.</div></div></div>
-<div id="tgbox" class="tat hide"><b>Condiciones Guest</b><div class="hint">Mínimo $25.000 por día · 5 días $100.000 · 10 días $200.000 · 15 días $250.000. Luego puede incorporarse solo como Compartido o Full.</div>
-<label for="tgp">Plan</label><select id="tgp"><option value="dia">Por día ($25.000 c/u)</option><option value="5">5 días · $100.000</option><option value="10">10 días · $200.000</option><option value="15">15 días · $250.000</option></select>
+<div id="tgbox" class="tat hide"><b>Condiciones Guest</b><div class="hint">Mínimo $25.000 por día · 5 días $100.000 · 10 días $180.000 · 15 días $250.000. Luego puede incorporarse solo como Compartido o Full.</div>
+<label for="tgp">Plan</label><select id="tgp"><option value="dia">Por día ($25.000 c/u)</option><option value="5">5 días · $100.000</option><option value="10">10 días · $180.000</option><option value="15">15 días · $250.000</option></select>
 <div id="tgnw"><label for="tgn">Cantidad de días</label><input id="tgn" type="number" min="1" max="30" value="1" inputmode="numeric"></div>
 <label for="tgd">Fecha de inicio</label><input id="tgd" type="date"><div class="err" id="e-tgd"></div><div class="st" id="tgtot"></div></div>
 <button class="main" type="submit">Crear tatuador</button>
@@ -2434,8 +2434,8 @@ $('aspot').addEventListener('click',function(e){
   misSpot();badges();
 });
 $('bt-spot').addEventListener('click',function(){setTab('spot')});
-// ---- Reserva de spot con garantía ($50.000, única vez al incorporarse) ----
-var GAR=50000;function garSel(){var e=$('rv-gar');return e?(+e.value||GAR):GAR}
+// ---- Reserva de spot con garantía ($30.000, única vez al incorporarse) ----
+var GAR=30000;function garSel(){var e=$('rv-gar');return e?(+e.value||GAR):GAR}
 function rsvL(){try{return JSON.parse(localStorage.getItem('reservas')||'[]')}catch(e){return[]}}
 function rsvS(l){try{localStorage.setItem('reservas',JSON.stringify(l));return true}catch(e){return false}}
 function rsvFind(rut){var c=cleanRut(rut||'');return rsvL().filter(function(r){return r.estado==='activa'&&cleanRut(r.rut)===c})[0]}
@@ -2452,12 +2452,12 @@ var _spo0=spots;spots=function(){_spo0();rsvRender()};
 function rsvRender(){
   var el=$('rsv');if(!el)return;
   if(!el.dataset.f){el.dataset.f='1';
-    el.innerHTML='<button type="button" class="main" id="rvnew" style="padding:10px">+ Reservar spot</button><div id="rvf" class="tat hide"><b>Reserva de spot · artista nuevo</b><div class="hint">Garantía única por su incorporación: elige $50.000 o $30.000. Cuando se le asigne usuario deberá pagar el spot completo (la garantía no se descuenta).</div>'+
+    el.innerHTML='<button type="button" class="main" id="rvnew" style="padding:10px">+ Reservar spot</button><div id="rvf" class="tat hide"><b>Reserva de spot · artista nuevo</b><div class="hint">Garantía única por su incorporación: $30.000. Cuando se le asigne usuario deberá pagar el spot completo (la garantía no se descuenta).</div>'+
     '<label for="rv-rut">RUT del artista</label><input id="rv-rut" placeholder="12.345.678-5" maxlength="12" autocomplete="off"><label for="rv-nom">Nombre completo</label><input id="rv-nom" autocomplete="off">'+
     '<div class="row"><div><label for="rv-spot">Spot</label><select id="rv-spot"><option value="">Seleccionar…</option>'+[1,2,3,4,5,6,7,8].map(function(n){return '<option>Spot '+n+'</option>'}).join('')+'</select></div><div><label for="rv-con">Contrato</label><select id="rv-con"><option value="">Seleccionar…</option><option>Full</option><option>Compartido</option><option>Guest</option></select></div></div>'+
-    '<div id="rv-gbox" class="tat hide"><b>Guest · pago único</b><div class="hint">El guest paga una sola vez su estadía (sin garantía) y reserva un cupo: las vacaciones de un artista Full o un lugar libre en un spot compartido.</div><label for="rv-gc">Cupo disponible</label><select id="rv-gc"></select><label for="rv-gp">Plan</label><select id="rv-gp"><option value="dia">Por día ($25.000 c/u)</option><option value="5">5 días · $100.000</option><option value="10">10 días · $200.000</option><option value="15">15 días · $250.000</option></select><div id="rv-gnw"><label for="rv-gn">Cantidad de días</label><input id="rv-gn" type="number" min="1" max="30" value="1" inputmode="numeric"></div><label for="rv-gd">Fecha de inicio</label><input type="date" id="rv-gd"></div>'+
+    '<div id="rv-gbox" class="tat hide"><b>Guest · pago único</b><div class="hint">El guest paga una sola vez su estadía (sin garantía) y reserva un cupo: las vacaciones de un artista Full o un lugar libre en un spot compartido.</div><label for="rv-gc">Cupo disponible</label><select id="rv-gc"></select><label for="rv-gp">Plan</label><select id="rv-gp"><option value="dia">Por día ($25.000 c/u)</option><option value="5">5 días · $100.000</option><option value="10">10 días · $180.000</option><option value="15">15 días · $250.000</option></select><div id="rv-gnw"><label for="rv-gn">Cantidad de días</label><input id="rv-gn" type="number" min="1" max="30" value="1" inputmode="numeric"></div><label for="rv-gd">Fecha de inicio</label><input type="date" id="rv-gd"></div>'+
     '<div class="row"><div><label for="rv-fec">Fecha de pago</label><input type="date" id="rv-fec"></div><div><label for="rv-med">Medio de pago</label><select id="rv-med"><option>Transferencia</option><option>Efectivo</option></select></div></div>'+
-    '<div id="rv-garw"><label for="rv-gar">Monto de garantía</label><select id="rv-gar"><option value="50000">$50.000</option><option value="30000">$30.000</option></select></div><div class="st" id="rv-gl">Garantía a cobrar: <b>'+clp(garSel())+'</b></div><div class="err" id="rv-err"></div><button type="button" class="main" id="rv-ok" style="padding:10px">Registrar reserva y garantía</button></div><div id="rsvl"></div>';
+    '<div id="rv-garw"><label for="rv-gar">Monto de garantía</label><select id="rv-gar"><option value="30000">$30.000</option></select></div><div class="st" id="rv-gl">Garantía a cobrar: <b>'+clp(garSel())+'</b></div><div class="err" id="rv-err"></div><button type="button" class="main" id="rv-ok" style="padding:10px">Registrar reserva y garantía</button></div><div id="rsvl"></div>';
     el.addEventListener('click',rsvClick);['change','input'].forEach(function(ev){el.addEventListener(ev,function(e){if(/^rv-(con|g)/.test(e.target.id))gUpd()})});
     $('rv-rut').addEventListener('blur',function(){if(rutOk(this.value))this.value=fmtRut(this.value)})}
   var L=rsvL().slice().reverse();
@@ -2847,7 +2847,7 @@ $('citl').addEventListener('click',function(e){var v=e.target.closest('[data-cv]
 // ---- Contrato Guest, residentes y vacaciones, salidas y archivo de tatuadores ----
 function fD(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)}
 function fdm(x){return x?x.split('-').reverse().join('-'):''}
-var GPAQ={'5':100000,'10':200000,'15':250000};
+var GPAQ={'5':100000,'10':180000,'15':250000};
 function guestDias(g){return g.plan==='dia'?Math.max(1,+g.dias||1):+g.plan||1}
 function guestPrecio(g){return g.plan==='dia'?guestDias(g)*25000:(GPAQ[g.plan]||0)}
 function guestHasta(g){var d=new Date(g.desde+'T12:00:00');d.setDate(d.getDate()+guestDias(g)-1);return fD(d)}
@@ -3050,7 +3050,7 @@ $('tbaja').addEventListener('click',function(e){
   if(b.dataset.br!==undefined){
     var i=+b.dataset.br,bx=$('br'+i),t=B[i];if(bx.innerHTML){bx.innerHTML='';return}
     var so='<option value="">Seleccionar…</option>'+[1,2,3,4,5,6,7,8].map(function(n){return '<option>Spot '+n+'</option>'}).join('');
-    bx.innerHTML='<div class="hint" style="margin-top:8px">Revisa el historial antes de reincorporar. Conserva su usuario y clave; la condición de residente debe asignarse de nuevo.</div><label>Reincorporar como</label><select class="brc"><option>Full</option><option>Compartido</option><option>Guest</option></select><label>Spot</label><select class="brs">'+so+'</select><div class="brg hide"><label>Plan guest</label><select class="brgp"><option value="dia">Por día ($25.000 c/u)</option><option value="5">5 días · $100.000</option><option value="10">10 días · $200.000</option><option value="15">15 días · $250.000</option></select><label>Días (solo plan por día)</label><input type="number" class="brgn" min="1" max="30" value="1"><label>Inicio de la estadía</label><input type="date" class="brgd" value="'+hoyF()+'"></div><label>Fecha de reintegro</label><input type="date" class="brf" value="'+hoyF()+'"><div class="err"></div><button type="button" class="main" data-brok="'+i+'" style="margin-top:10px;padding:10px">Confirmar reincorporación</button>';return}
+    bx.innerHTML='<div class="hint" style="margin-top:8px">Revisa el historial antes de reincorporar. Conserva su usuario y clave; la condición de residente debe asignarse de nuevo.</div><label>Reincorporar como</label><select class="brc"><option>Full</option><option>Compartido</option><option>Guest</option></select><label>Spot</label><select class="brs">'+so+'</select><div class="brg hide"><label>Plan guest</label><select class="brgp"><option value="dia">Por día ($25.000 c/u)</option><option value="5">5 días · $100.000</option><option value="10">10 días · $180.000</option><option value="15">15 días · $250.000</option></select><label>Días (solo plan por día)</label><input type="number" class="brgn" min="1" max="30" value="1"><label>Inicio de la estadía</label><input type="date" class="brgd" value="'+hoyF()+'"></div><label>Fecha de reintegro</label><input type="date" class="brf" value="'+hoyF()+'"><div class="err"></div><button type="button" class="main" data-brok="'+i+'" style="margin-top:10px;padding:10px">Confirmar reincorporación</button>';return}
   var j=+b.dataset.brok,bx2=$('br'+j),t2=B[j],T=getT(),er=bx2.querySelector('.err'),q=function(c){return bx2.querySelector(c).value};
   var co=q('.brc'),sp=q('.brs'),f=q('.brf');
   if(!sp){er.textContent='Selecciona el spot';return}
@@ -3692,6 +3692,12 @@ spotSync();
 
 /* B) Spot (pago) separado del kit mensual */
 var _ch=cobroHTML;cobroHTML=c=>_ch(c).replace(/<h3 style="font-size:15px;margin:14px 0 0">Kit mensual<\/h3>[\s\S]*$/,'<div class="hint">🎁 El kit mensual se gestiona aparte, en la pestaña Kits.</div></div>');
+// Pago verificado: vista resumida, sin edición
+var _ch2=cobroHTML;
+cobroHTML=function(c){
+  if(c.pagado&&(c.via!=='artista'||c.verif))return '<div class="tat" data-id="'+esc(c.id)+'" style="padding:10px 12px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>'+esc(c.alias)+'<span class="tag">'+c.contrato+'</span></b><span class="st ok2">✓ Pagado</span></div><div class="st">'+clp(c.monto||neto(c))+(c.dt?' (con descuento)':'')+' · '+esc(c.fp)+' · '+esc(c.medio||'—')+'</div><div class="st ok2">'+(c.via==='artista'?'✓ Verificado por administración':'✓ Registrado por administración')+'</div></div>';
+  return _ch2(c);
+};
 var _ms=misSpot;misSpot=function(){_ms();try{spotSync();QA('#aspotl h3').forEach(h=>{if(h.textContent==='Kit mensual'){while(h.nextSibling)h.nextSibling.remove();h.remove()}});QA('#spay .spt').forEach(s=>{var l=s.previousElementSibling;if(l&&l.tagName==='LABEL')l.remove();s.remove()})}catch(e){}};
 function kitCard(c,adm){var v=verOk(c),gl=c.kit.some(k=>k.g),lock=c.kit.some(k=>k.g&&k.e),all=c.kit.every(k=>k.r),ent=c.kit.every(k=>k.e);
  if(!v)return `<div class="tat"><h3>${esc(adm?c.alias+' · ':'')}${esc(c.mes)}<span class="tag">Sin habilitar</span></h3><div class="hint">${c.pagado?'Pago del spot por verificar':'Spot sin pagar'}: el kit se habilita cuando el pago esté verificado${adm?' (pestaña Spots)':''}.</div></div>`;
