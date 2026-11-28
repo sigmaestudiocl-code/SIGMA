@@ -162,6 +162,8 @@ body.atheme{--bg:rgba(0,0,0,.35);--card:rgba(18,18,20,.9);--tx:#f0ece6;--mut:#a3
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+<script>/* Clave pública VAPID (Firebase → Configuración → Cloud Messaging → Certificados push web). Pégala entre las comillas. */window.SIGMA_VAPID=window.SIGMA_VAPID||'BAKeYJZB2QvGT4kPZxWKAuRmPwvH_lImX6iJoXMz9p6_Y8y-PAEeVZ56NhVYWucEOt83c-dH0WvRLxwpOaeEPRc';</script>
 <script>window.__staffLogin=function(){
 if(!window.firebase)return;
 var au=firebase.auth(),u=au.currentUser,staff=u&&!u.isAnonymous;
@@ -324,7 +326,7 @@ function IMG(v){v=String(v||'');return(/^data:image\/(png|jpe?g|webp);base64,[A-
 function clean(r){
   if(!r||typeof r!=='object')return null;
   var k=S(r.clave,24).toUpperCase().replace(/[^0-9A-Z]/g,'');if(k.length<5)return null;
-  var c={nombre:S(r.nombre,120),extranjero:!!r.extranjero,documento:S(r.documento,40),nacionalidad:S(r.nacionalidad,60),direccion:S(r.direccion,200),comuna:S(r.comuna,80),ciudad:S(r.ciudad,80),region:S(r.region,80),nacimiento:S(r.nacimiento,12),telefono:S(r.telefono,30),correo:S(r.correo,120),artista:S(r.artista,60),creado:S(r.creado,40)||new Date().toISOString(),clave:k,folio:S(r.folio,30)};
+  var c={nombre:S(r.nombre,120),extranjero:!!r.extranjero,documento:S(r.documento,40),nacionalidad:S(r.nacionalidad,60),direccion:S(r.direccion,200),comuna:S(r.comuna,80),ciudad:S(r.ciudad,80),region:S(r.region,80),pais:S(r.pais,60),estado:S(r.estado,80),cp:S(r.cp,20),nacimiento:S(r.nacimiento,12),telefono:S(r.telefono,30),correo:S(r.correo,120),artista:S(r.artista,60),creado:S(r.creado,40)||new Date().toISOString(),clave:k,folio:S(r.folio,30)};
   if(r.menor&&r.rep&&typeof r.rep==='object'){c.menor=true;c.rep={nombre:S(r.rep.nombre,120),documento:S(r.rep.documento,40),parentesco:S(r.rep.parentesco,40),telefono:S(r.rep.telefono,30),cedulaFrente:IMG(r.rep.cedulaFrente),cedulaReverso:IMG(r.rep.cedulaReverso),firma:IMG(r.rep.firma),fecha:S(r.rep.fecha,40)}}
   var q=r.consentimiento;
   if(q&&typeof q==='object'&&q.aprobado&&IMG(q.firma)){c.consentimiento={aprobado:true,fecha:S(q.fecha,40),firma:IMG(q.firma),fotos:!!q.fotos,datos:'Ley 19.628 mod. Ley 21.719',datosAcepta:!!q.datosAcepta};c.estado='firmado_cliente';c.vistoArt=false}
@@ -461,7 +463,6 @@ SB.staff=function(db){
 <div id="npanel" class="np hide"></div>
 <div class="tabs"><button type="button" id="tab-cli" class="on">Cliente</button><button type="button" id="tab-art">Artista</button><button type="button" id="tab-adm">Administración</button></div>
 <div id="vcli">
-<div class="steps"><span id="s1" class="on">1 · Ingreso cliente</span><span id="s2">2 · Consentimiento</span><span>3 · Diseño</span><span>4 · Sesión</span></div>
 
 <form id="f" novalidate>
 <h2>Datos personales</h2>
@@ -498,6 +499,7 @@ SB.staff=function(db){
 <input id="dir" autocomplete="street-address" placeholder="Av. Providencia 1234, depto 56">
 <div class="err" id="e-dir"></div>
 
+<div id="bl-dir-cl">
 <label for="comuna">Comuna</label>
 <input id="comuna" list="dl-comunas" placeholder="Escribe para buscar…" autocomplete="off">
 <datalist id="dl-comunas"></datalist>
@@ -509,6 +511,19 @@ SB.staff=function(db){
 </div>
 <div class="err" id="e-region"></div>
 <div class="hint">Al elegir la comuna, la región y la ciudad se completan solas.</div>
+</div>
+<div id="bl-dir-ext" class="hide">
+  <label for="pais">País</label>
+  <select id="pais"><option value="">Seleccionar…</option></select>
+  <div class="err" id="e-pais"></div>
+  <div class="row">
+    <div><label for="ciudadx">Ciudad</label><input id="ciudadx" autocomplete="address-level2" placeholder="Ciudad"></div>
+    <div><label for="estadox">Estado / provincia</label><input id="estadox" autocomplete="address-level1" placeholder="Estado o provincia"></div>
+  </div>
+  <div class="err" id="e-ciudadx"></div>
+  <label for="cpx">Código postal (opcional)</label>
+  <input id="cpx" autocomplete="postal-code" placeholder="Código postal">
+</div>
 
 <label for="fnac">Fecha de nacimiento</label>
 <input id="fnac" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10" autocomplete="bday">
@@ -528,8 +543,8 @@ SB.staff=function(db){
   <div class="hint">Cuando el cliente cumpla 18 años deberá firmar nuevamente su consentimiento.</div>
 </div>
 
-<label for="tel">Teléfono</label>
-<input id="tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="+56 9 1234 5678">
+<label for="telcod">Teléfono</label>
+<div style="display:flex;gap:8px"><select id="telcod" style="flex:0 0 46%;min-width:0"></select><input id="tel" type="tel" inputmode="tel" autocomplete="tel" style="flex:1;min-width:0"></div>
 <div class="err" id="e-tel"></div>
 
 <label for="mail">Correo electrónico</label>
@@ -891,6 +906,52 @@ $("ext").addEventListener("change",function(){
   $("bl-ext").classList.toggle("hide",!e);
   $("tel").placeholder=e?"+código país y número":"+56 9 1234 5678";
 });
+// ===== Países · teléfono con código · dirección abierta (extranjeros) · datos bloqueados de cliente registrado =====
+var PL="CL|Chile|56;AR|Argentina|54;BO|Bolivia|591;BR|Brasil|55;CO|Colombia|57;CR|Costa Rica|506;CU|Cuba|53;EC|Ecuador|593;SV|El Salvador|503;GT|Guatemala|502;HT|Haití|509;HN|Honduras|504;MX|México|52;NI|Nicaragua|505;PA|Panamá|507;PY|Paraguay|595;PE|Perú|51;PR|Puerto Rico|1;DO|República Dominicana|1;UY|Uruguay|598;VE|Venezuela|58;BZ|Belice|501;GY|Guyana|592;SR|Surinam|597;US|Estados Unidos|1;CA|Canadá|1;ES|España|34;PT|Portugal|351;FR|Francia|33;IT|Italia|39;DE|Alemania|49;GB|Reino Unido|44;IE|Irlanda|353;NL|Países Bajos|31;BE|Bélgica|32;CH|Suiza|41;AT|Austria|43;SE|Suecia|46;NO|Noruega|47;DK|Dinamarca|45;FI|Finlandia|358;PL|Polonia|48;CZ|Chequia|420;HU|Hungría|36;RO|Rumania|40;BG|Bulgaria|359;RS|Serbia|381;HR|Croacia|385;UA|Ucrania|380;BY|Bielorrusia|375;RU|Rusia|7;GR|Grecia|30;TR|Turquía|90;GE|Georgia|995;AM|Armenia|374;CN|China|86;HK|Hong Kong|852;TW|Taiwán|886;JP|Japón|81;KR|Corea del Sur|82;IN|India|91;PK|Pakistán|92;BD|Bangladés|880;NP|Nepal|977;LK|Sri Lanka|94;AF|Afganistán|93;IR|Irán|98;IQ|Irak|964;PH|Filipinas|63;ID|Indonesia|62;VN|Vietnam|84;TH|Tailandia|66;MY|Malasia|60;SG|Singapur|65;AU|Australia|61;NZ|Nueva Zelanda|64;IL|Israel|972;AE|Emiratos Árabes Unidos|971;SA|Arabia Saudita|966;LB|Líbano|961;SY|Siria|963;EG|Egipto|20;MA|Marruecos|212;DZ|Argelia|213;NG|Nigeria|234;GH|Ghana|233;ZA|Sudáfrica|27;KE|Kenia|254;SN|Senegal|221;CM|Camerún|237;AO|Angola|244;CD|Rep. Dem. del Congo|243;GQ|Guinea Ecuatorial|240".split(";").map(function(s){var p=s.split("|");return{i:p[0],n:p[1],c:p[2]}});
+PL.sort(function(x,y){return x.i==="CL"?-1:y.i==="CL"?1:x.n.localeCompare(y.n,"es")});
+var PM={};PL.forEach(function(p){PM[p.i]=p});
+function flag(i){return String.fromCodePoint.apply(null,i.split("").map(function(ch){return 127397+ch.charCodeAt(0)}))}
+PL.forEach(function(p){
+  $("pais").insertAdjacentHTML("beforeend",'<option value="'+p.i+'">'+p.n+'</option>');
+  $("telcod").insertAdjacentHTML("beforeend",'<option value="'+p.i+'">'+flag(p.i)+" "+p.n+" +"+p.c+"</option>")});
+
+// Teléfono: el campo siempre lleva el código del país elegido (+56 por defecto)
+var CUR="56";
+function detCod(d){var m=null;PL.forEach(function(p){if(d.indexOf(p.c)===0&&(!m||p.c.length>m.c.length))m=p});if(m&&m.c==="1")m=PM.US;return m}
+function natOf(v,cur){v=String(v||"").trim();var d=v.replace(/\D/g,"");
+  if(v.charAt(0)==="+"){if(d.indexOf(cur)===0)return d.slice(cur.length);if(cur.indexOf(d)===0)return "";var m=detCod(d);if(m)return d.slice(m.c.length)}
+  return d}
+function fmtNat(c,n){if(c==="56"){n=n.slice(0,9);return n.replace(/^(\d)(\d{0,4})(\d{0,4})$/,function(x,a,b,d){return a+(b?" "+b:"")+(d?" "+d:"")})}return n.slice(0,13)}
+function renderTel(n){var nv="+"+CUR+" "+fmtNat(CUR,n);if($("tel").value!==nv)$("tel").value=nv}
+function telSel(iso){var p=PM[iso]||PM.CL,old=CUR;$("telcod").value=p.i;CUR=p.c;renderTel(natOf($("tel").value,old))}
+function syncTel(v){v=String(v||"");var d=v.replace(/\D/g,"");
+  if(v.trim().charAt(0)==="+"){var m=detCod(d);if(m){$("telcod").value=m.i;CUR=m.c;$("telcod").disabled=!$("ext").checked&&CUR==="56";renderTel(d.slice(m.c.length));return}}
+  renderTel(d)}
+$("telcod").addEventListener("change",function(){telSel(this.value)});
+$("pais").addEventListener("change",function(){if(this.value)telSel(this.value)});
+$("tel").addEventListener("input",function(){var v=this.value,d=v.replace(/\D/g,"");
+  if(v.charAt(0)==="+"&&d.indexOf(CUR)!==0&&d.length>CUR.length+5&&!$("telcod").disabled){var m=detCod(d);if(m){$("telcod").value=m.i;CUR=m.c}}
+  renderTel(natOf(v,CUR))});
+
+// Datos del cliente registrado: se pueden corregir, salvo documento y fecha de nacimiento
+$("e-fnac").insertAdjacentHTML("afterend",'<div id="lkmsg" class="hint hide">🔒 Tu documento y tu fecha de nacimiento no se pueden modificar. El resto de tus datos puedes corregirlos. <button type="button" class="sm" id="lkno">No soy yo</button></div>');
+var lks=document.createElement("style");lks.textContent="input.lk,select.lk{opacity:.7}";document.head.appendChild(lks);
+function bloquear(on){["rut","ndoc","fnac"].forEach(function(id){var e=$(id);e.readOnly=on;e.classList.toggle("lk",on)});
+  $("tdoc").disabled=on;$("tdoc").classList.toggle("lk",on);$("ext").disabled=on;$("lkmsg").classList.toggle("hide",!on)}
+var _cg=cargar;
+cargar=function(c){_cg(c);
+  if(c.extranjero){$("pais").value=(PL.filter(function(p){return p.n===c.pais})[0]||{i:""}).i;$("ciudadx").value=c.ciudad||"";$("estadox").value=c.estado||"";$("cpx").value=c.cp||""}
+  syncTel(c.telefono);
+  try{$("fnac").dispatchEvent(new Event("input"))}catch(e){}
+  bloquear(true)};
+$("lkno").addEventListener("click",function(){bloquear(false);$("f").reset();$("ext").dispatchEvent(new Event("change"));fillList();$("auto").textContent="";$("e-ndoc").textContent="";$("ciudad").dataset.manual=""});
+
+// Extranjero: dirección abierta + país + teléfono con código elegible
+$("ext").addEventListener("change",function(){var e=this.checked;bloquear(false);
+  $("bl-dir-cl").classList.toggle("hide",e);$("bl-dir-ext").classList.toggle("hide",!e);
+  if(!e)telSel("CL");else renderTel(natOf($("tel").value,CUR));
+  $("telcod").disabled=!e&&CUR==="56"});
+$("ext").dispatchEvent(new Event("change"));
 
 // Mayoría de edad: fecha máxima = hoy − 18 años
 var hoy=new Date(),lim=new Date(hoy.getFullYear()-18,hoy.getMonth(),hoy.getDate());
@@ -908,8 +969,10 @@ function validar(){
   else{v(setErr("ndoc",$("ndoc").value.trim().length<4?"Ingresa el número de documento":""));
        v(setErr("nac",$("nac").value.trim().length<3?"Ingresa la nacionalidad":""));}
   v(setErr("dir",$("dir").value.trim().length<5?"Ingresa calle y número":""));
-  v(setErr("comuna",!findComuna($("comuna").value)?"Elige una comuna de la lista":""));
-  v(setErr("region",!$("region").value?"Selecciona la región":""));
+  if(!ext){v(setErr("comuna",!findComuna($("comuna").value)?"Elige una comuna de la lista":""));
+    v(setErr("region",!$("region").value?"Selecciona la región":""))}
+  else{v(setErr("pais",!$("pais").value?"Selecciona el país":""));
+    v(setErr("ciudadx",$("ciudadx").value.trim().length<2?"Ingresa la ciudad":""))}
   var f=isoFrom($("fnac").value),msg="";
   if(!f)msg=$("fnac").value?"Fecha inválida: usa DD/MM/AAAA":"Ingresa la fecha de nacimiento";
   else{var d=new Date(f+"T00:00:00");if(isNaN(d)||d>new Date())msg="La fecha no puede ser futura";else if(d>lim16)msg="Edad mínima: 16 años cumplidos"}
@@ -1202,14 +1265,6 @@ $('rl').addEventListener('click',function(e){archClick(e,true)});
 $('al2').addEventListener('click',function(e){archClick(e,false)});
 $('rev').addEventListener('click',function(e){var d=e.target.closest('[data-ad]');if(d)descargar(+d.dataset.ad)});
 $('pane').addEventListener('change',showAn);
-(function(){var t=$('tel'),e=$('ext');
-  function def(){var x=e.checked;t.value=x?'+':'+569 ';t.placeholder=x?'+código país y número':'+569 1234 5678'}
-  def();e.addEventListener('change',def);
-  t.addEventListener('input',function(){
-    if(e.checked){if(t.value.charAt(0)!=='+')t.value='+'+t.value.replace(/\+/g,'')}
-    else if(t.value.indexOf('+569')!==0)t.value='+569 '+t.value.replace(/^\+?5?6?9?\s*/,'').replace(/\D/g,'');
-  });
-})();
 function anDl(p){var a=p&&p.anest;return a?'<dt>Autoriz. anestesia</dt><dd>✓ Firmada por el cliente · '+fmtF(a.fecha)+'<br><img alt="Firma anestesia" src="'+a.firma+'" style="width:100%;max-width:200px;background:#fff;border-radius:6px"></dd><dt>Lote / vence</dt><dd>'+esc(a.lote)+' · '+esc(a.vence)+(a.foto?'<br><img alt="Artículo" src="'+a.foto+'" style="max-width:100%;max-height:150px;border-radius:6px;margin-top:4px">':'')+'</dd>':''}
 function anHTML(p){var d=anDl(p);return d?'<div class="tat"><h3>Autorización de anestesia</h3><dl>'+d+'</dl></div>':''}
 function tatDe(a){return getT().filter(function(t){return t.alias===a})[0]||{}}
@@ -1312,7 +1367,7 @@ function finCliente(c){
   repImg={f:'',b:''};$('bl-rep').classList.add('hide');if(repPad)repPad.setup();
   $('auto').textContent='';firmado=false;$('leido').disabled=true;
   $('sh').textContent='Desplázate hasta el final del documento para habilitar la aprobación.';$('doc').scrollTop=0;
-  $('cf').classList.add('hide');$('f').classList.remove('hide');$('s2').classList.remove('on');$('s1').classList.add('on');$('res').innerHTML='';
+  $('cf').classList.add('hide');$('f').classList.remove('hide');$('res').innerHTML='';
   irInicio('✓ Consentimiento firmado. Folio '+c.folio+'. Tu tatuador fue notificado.');
 }
 function pCard(c){
@@ -1409,7 +1464,7 @@ $('bt-ag').addEventListener('click',function(){setTab('ag')});
 
 // ---- Notificaciones, agenda 2, perfil, honorarios y mover spot ----
 function nl(){return ld('notis','[]')}
-function noti(para,txt,key){var L=nl();if(key&&L.some(function(n){return n.k===key}))return;L.push({id:Date.now()+Math.random(),para:para,txt:txt,f:new Date().toISOString(),l:false,k:key||''});sd('notis',L.slice(-200))}
+function noti(para,txt,key){var L=nl();if(key&&L.some(function(n){return n.k===key}))return;L.push({id:Date.now()+Math.random(),para:para,txt:txt,f:new Date().toISOString(),l:false,k:key||''});sd('notis',L.slice(-200));pushQ(para,txt)}
 function who(){var r=document.body.dataset.role;return r==='adm'&&admin?'ADMIN':r==='art'&&art?art.alias:null}
 var tW=null,tL='';
 function tabBdg(){
@@ -1438,6 +1493,40 @@ $('bell').addEventListener('click',function(){
   L.forEach(function(n){if(n.para===w)n.l=true});sd('notis',L);updBell();
 });
 $('npanel').addEventListener('click',function(e){if(!e.target.closest('#nclr'))return;var w=who();sd('notis',nl().filter(function(n){return !(n.para===w&&n.l)}));$('npanel').classList.add('hide')});
+// ===== Avisos al celular (push) =====
+// Requiere: clave VAPID (window.SIGMA_VAPID), firebase-messaging-sw.js junto a index.html y la Cloud Function enviarPush.
+function pushSoportado(){try{return 'Notification' in window&&'serviceWorker' in navigator&&window.firebase&&firebase.messaging&&firebase.messaging.isSupported()}catch(e){return false}}
+function pushTok(){try{return localStorage.getItem('rst_pushtok')||''}catch(e){return ''}}
+function pushQ(para,txt){try{if(!window.SIGMA_VAPID||!window.firebase||!firebase.apps.length)return;firebase.firestore().collection('pushQueue').add({para:String(para),txt:String(txt).slice(0,300),f:new Date().toISOString()}).catch(function(){})}catch(e){}}
+function activarPush(msg){
+  var w=who();if(!w)return;
+  if(!('Notification' in window)){msg('Este navegador no permite notificaciones. En iPhone instala la app en la pantalla de inicio.');return}
+  Notification.requestPermission().then(function(p){
+    if(p!=='granted'){msg('Permiso denegado: actívalo en los ajustes del navegador o del celular.');return}
+    if(!window.SIGMA_VAPID||!pushSoportado()){try{localStorage.setItem('rst_localnoti','1')}catch(e){}msg('✓ Avisos activados mientras la app esté abierta o en segundo plano. Para recibirlos con la app cerrada falta configurar el envío push.',1);return}
+    return navigator.serviceWorker.register('firebase-messaging-sw.js',{scope:'./firebase-cloud-messaging-push-scope'}).then(function(reg){
+      return firebase.messaging().getToken({vapidKey:window.SIGMA_VAPID,serviceWorkerRegistration:reg})}).then(function(tok){
+      if(!tok){msg('No se pudo obtener el permiso de envío. Intenta de nuevo.');return}
+      return firebase.firestore().collection('fcmTokens').doc(tok).set({para:w,t:new Date().toISOString(),ua:navigator.userAgent.slice(0,120)}).then(function(){
+        try{localStorage.setItem('rst_pushtok',tok+'|'+w)}catch(e){}msg('✓ Avisos activados en este equipo',1)})})
+  }).catch(function(e){msg('No se pudo activar: '+((e&&(e.code||e.message))||e))})}
+$('bell').addEventListener('click',function(){
+  var p=$('npanel'),w=who();if(!w||p.classList.contains('hide'))return;
+  var ok=pushTok().split('|')[1]===w||(!window.SIGMA_VAPID&&localStorage.getItem('rst_localnoti')==='1'&&Notification.permission==='granted');
+  var d=document.createElement('div');d.id='pushbx';d.style.cssText='margin:8px 0;padding-top:8px;border-top:1px solid var(--bd)';
+  d.innerHTML=ok?'<div class="hint" style="color:var(--ok)">🔔 Avisos al celular activados en este equipo</div>':'<button type="button" class="sm" id="pushon">🔔 Activar avisos al celular</button><div class="hint" id="pushmsg"></div>';
+  p.insertBefore(d,p.children[1]||null)});
+$('npanel').addEventListener('click',function(e){
+  if(!e.target.closest('#pushon'))return;
+  activarPush(function(t,ok){var m=$('pushmsg');if(m){m.style.color=ok?'var(--ok)':'var(--ac)';m.textContent=t}if(ok){var b=$('pushon');if(b)b.remove()}})});
+// Respaldo sin servidor: avisa mientras la app siga abierta en segundo plano
+var _ln=null;
+setInterval(function(){try{
+  var w=who();if(!w||pushTok()||localStorage.getItem('rst_localnoti')!=='1'||Notification.permission!=='granted')return;
+  if(!_ln||_ln.w!==w){_ln={w:w,f:new Date().toISOString()};return}
+  nl().filter(function(n){return n.para===w&&!n.l&&n.f>_ln.f}).forEach(function(n){_ln.f=n.f;
+    if(document.hidden)navigator.serviceWorker.ready.then(function(r){r.showNotification('Sigma Studio',{body:n.txt,tag:String(n.id)})})})
+}catch(e){}},3000);
 function saldo(e){return (e.pend||0)-(e.pag||[]).reduce(function(a,p){return a+p.m},0)}
 function genRem(){
   var now=new Date(),hs=hoyF(),t1=new Date(now.getTime()+864e5),ts=isoD(t1.getFullYear(),t1.getMonth(),t1.getDate()),cl=clientes(),A=getA(),md=hs.slice(5);
@@ -2662,8 +2751,8 @@ cv.addEventListener('pointermove',function(e){if(!dib)return;var p=pt(e);cx.line
 $('limp').addEventListener('click',setupCanvas);
 function chkScroll(){if(dc.scrollTop+dc.clientHeight>=dc.scrollHeight-8){$('leido').disabled=false;$('sh').textContent='✓ Documento revisado hasta el final.'}}
 dc.addEventListener('scroll',chkScroll);
-function irConsent(c){cur=c;$('fotos').checked=false;$('datos').checked=false;$('res').innerHTML='';$('f').classList.add('hide');$('cf').classList.remove('hide');$('s1').classList.remove('on');$('s2').classList.add('on');$('cl').textContent=(c.folio||'')+' · Cliente: '+c.nombre+' · '+c.documento;window.scrollTo(0,0);setupCanvas();chkScroll()}
-$('volver').addEventListener('click',function(){$('cf').classList.add('hide');$('f').classList.remove('hide');$('s2').classList.remove('on');$('s1').classList.add('on')});
+function irConsent(c){cur=c;$('fotos').checked=false;$('datos').checked=false;$('res').innerHTML='';$('f').classList.add('hide');$('cf').classList.remove('hide');$('cl').textContent=(c.folio||'')+' · Cliente: '+c.nombre+' · '+c.documento;window.scrollTo(0,0);setupCanvas();chkScroll()}
+$('volver').addEventListener('click',function(){$('cf').classList.add('hide');$('f').classList.remove('hide');});
 $('cf').addEventListener('submit',function(ev){
   ev.preventDefault();var ok=true;
   ok=setErr('leido',$('leido').checked?'':'Debes aprobar el documento marcando la casilla')&&ok;
@@ -2684,8 +2773,8 @@ $("f").addEventListener("submit",function(ev){
   var c={nombre:$("nombre").value.trim(),extranjero:ext,
     documento:ext?$("tdoc").value+" "+$("ndoc").value.trim():fmtRut($("rut").value),
     nacionalidad:ext?$("nac").value.trim():"Chilena",
-    direccion:$("dir").value.trim(),comuna:$("comuna").value,ciudad:$("ciudad").value.trim()||$("comuna").value,
-    region:$("region").value,nacimiento:isoFrom($("fnac").value),telefono:$("tel").value.trim(),correo:$("mail").value.trim(),
+    direccion:$("dir").value.trim(),comuna:ext?(($("cpx").value.trim()?$("cpx").value.trim()+" ":"")+$("ciudadx").value.trim()):$("comuna").value,ciudad:ext?$("ciudadx").value.trim():($("ciudad").value.trim()||$("comuna").value),
+    region:ext?[$("estadox").value.trim(),PM[$("pais").value].n].filter(Boolean).join(", "):$("region").value,pais:ext?PM[$("pais").value].n:"Chile",estado:ext?$("estadox").value.trim():"",cp:ext?$("cpx").value.trim():"",nacimiento:isoFrom($("fnac").value),telefono:$("tel").value.trim(),correo:$("mail").value.trim(),
     artista:$("artista").value,creado:new Date().toISOString()};
   if(esMenor())c.menor=true,c.rep={nombre:$("rnom").value.trim(),documento:$("rdoc").value.trim(),parentesco:$("rpar").value,telefono:$("rtel").value.trim(),cedulaFrente:repImg.f,cedulaReverso:repImg.b,firma:repPad.data(),fecha:new Date().toISOString()};
   c.clave=ext?$("ndoc").value.replace(/[^0-9a-zA-Z]/g,"").toUpperCase():cleanRut($("rut").value);c.folio=(function(){try{var q=JSON.parse(localStorage.getItem("clientes")||"[]").filter(function(x){return clave(x)===c.clave&&!x.consentimiento&&x.folio})[0];return q?q.folio:folioNuevo()}catch(e){return folioNuevo()}})();
@@ -3086,7 +3175,7 @@ function fn(s){return String(s||'').trim().split(/\s+/)[0]}
 (function(){var s=document.createElement('style');s.textContent='#ahdr+.tabs{display:grid!important;grid-template-columns:1fr 1fr;gap:10px}#ahdr+.tabs button{padding:26px 10px!important;font-size:18px!important;font-weight:700;border-radius:14px}#bt-ag{order:1}#bt-cit{order:2}#bt-cli{order:3}#bt-arc{order:4}#bt-spot{order:5}#bt-cta{order:6}';document.head.appendChild(s);var p=document.getElementById('bt-per'),o=document.getElementById('asalir');if(p&&o){p.className='sm';p.style.cssText='';var w=document.createElement('div');w.style.cssText='display:flex;gap:8px';o.parentNode.insertBefore(w,o);w.appendChild(p);w.appendChild(o)}})();
 function validCt(v){var d=(v||'').replace(/[\s\-().+]/g,'');return /^\d{8,15}$/.test(d)||/^(https?:\/\/\S+|@?[A-Za-z0-9._]{2,30})$/.test((v||'').trim())}
 function ctField(x,req){return '<label>Teléfono o red social del cliente'+(req?' (obligatorio)':' (opcional)')+'</label><input class="ag-ct" autocomplete="off" placeholder="+56 9 1234 5678 o @usuario" value="'+esc(x&&x.contacto||'')+'">'}
-function notifPrio(e){var L=nl(),f=fCL(e.fecha);getT().forEach(function(t){L.push({id:Date.now()+Math.random(),para:t.alias,txt:'PRIORIDAD · El estudio agendó una cotización: '+e.titulo+' el '+f+' a las '+e.ini+'. Tómala en tu agenda antes que otro tatuador.',f:new Date().toISOString(),l:false,k:'cotp:'+e.id+':'+t.alias,p:true})});sd('notis',L.slice(-200))}
+function notifPrio(e){var L=nl(),f=fCL(e.fecha);getT().forEach(function(t){L.push({id:Date.now()+Math.random(),para:t.alias,txt:'PRIORIDAD · El estudio agendó una cotización: '+e.titulo+' el '+f+' a las '+e.ini+'. Tómala en tu agenda antes que otro tatuador.',f:new Date().toISOString(),l:false,k:'cotp:'+e.id+':'+t.alias,p:true});pushQ(t.alias,'PRIORIDAD · El estudio agendó una cotización: '+e.titulo)});sd('notis',L.slice(-200))}
 function ctMsg(e){var t=getT().filter(function(z){return z.alias===e.owner})[0]||{},r=e.cli?cliRec(e.cli):null,d=new Date(e.fecha+'T00:00:00').toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long'});return 'Hola '+fn((r&&r.nombre)||e.titulo)+(e.via==='estudio'?'! Recibí tu cotización por parte de Sigma Tattoo Studio para coordinar la sesión de tu tatuaje el día ':'! He registrado tu sesión de tu tatuaje el día ')+d+' a las '+e.ini+'. Mi nombre es '+fn(t.nombre||e.owner)+' "'+e.owner+'" y te enviaré los requisitos previos para tu sesión.'}
 document.addEventListener('click',function(ev){var b=ev.target.closest&&ev.target.closest('[data-ctc]');if(!b)return;var L=AGL(),e=L.filter(function(x){return String(x.id)===b.dataset.ctc})[0];if(!e||!e.contacto||e.ctAt)return;
   var m=ctMsg(e),c=e.contacto.trim(),dg=c.replace(/[\s\-().+]/g,'');
@@ -4197,8 +4286,6 @@ var yst=document.createElement('style');yst.textContent=`
 var ytb=document.querySelector('#ahdr+.tabs'),ycb=$('bt-per');if(ycb&&ytb){ycb.className='';ycb.style.cssText='';ycb.textContent='⚙️ Config.';ytb.appendChild(ycb)}
 var yst2=document.createElement('style');yst2.textContent='#bt-per{order:99;grid-column:1/-1}@media (min-width:900px){#bt-per{grid-column:auto}}';document.head.appendChild(yst2);
 if(ytb)ytb.insertAdjacentHTML('afterend','<div class="asep"><span>Contenido</span></div>');
-$('vcli').querySelector('.steps').insertAdjacentHTML('beforebegin','<div class="asep"><span>Pasos</span></div>');
-$('vcli').querySelector('.steps').insertAdjacentHTML('afterend','<div class="asep line"></div>');
 
 /* --- inicio --- */
 setArea('ops',false);
